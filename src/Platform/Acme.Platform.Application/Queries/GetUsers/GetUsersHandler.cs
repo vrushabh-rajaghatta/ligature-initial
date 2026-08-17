@@ -2,7 +2,6 @@ using Microsoft.EntityFrameworkCore;
 
 using Acme.Persistence;
 using Acme.Platform.Application.Common;
-using Acme.SharedKernel.Abstractions;
 
 namespace Acme.Platform.Application.Queries.GetUsers;
 
@@ -15,14 +14,10 @@ namespace Acme.Platform.Application.Queries.GetUsers;
 public sealed class GetUsersHandler
 {
     private readonly AcmeDbContext _dbContext;
-    private readonly ITenantContext _tenantContext;
 
-    public GetUsersHandler(
-        AcmeDbContext dbContext,
-        ITenantContext tenantContext)
+    public GetUsersHandler(AcmeDbContext dbContext)
     {
         _dbContext = dbContext;
-        _tenantContext = tenantContext;
     }
 
     public async Task<PagedResult<UserListItem>> HandleAsync(
@@ -35,14 +30,10 @@ public sealed class GetUsersHandler
         var pageSize = Math.Clamp(
             query.PageSize, 1, GetUsersQuery.MaxPageSize);
 
-        // Tenant filter first, and unconditionally. There is no branch that can
-        // skip it, which is the entire point: a directory read cannot be
-        // widened past the caller's own tenant.
-        var tenantId = _tenantContext.TenantId.Value;
-
+        // Filtered by tenant until ADR-066. The directory is now every user in
+        // this deployment, which is the same set the filter used to produce.
         var users = _dbContext.UserDirectory
-            .AsNoTracking()
-            .Where(x => x.TenantId == tenantId);
+            .AsNoTracking();
 
         if (query.Status is not null)
         {

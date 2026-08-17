@@ -1,6 +1,5 @@
 using FluentAssertions;
 
-using Acme.SharedKernel.Primitives;
 using Acme.Platform.Application.Commands.UpdateUserProfile;
 using Acme.Platform.Application.Tests.Fakes;
 using Acme.Platform.Domain.Aggregates.User;
@@ -14,12 +13,9 @@ namespace Acme.Platform.Application.Tests.Commands.UpdateUserProfile;
 
 public sealed class UpdateUserProfileHandlerTests
 {
-    private static readonly TenantId Organization = TenantId.New();
 
     private static UserAggregate ExistingUser() =>
-        UserAggregate.CreateForTenant(
-            Organization,
-            Email.Create("john.doe@example.com"),
+        UserAggregate.Create(Email.Create("john.doe@example.com"),
             "John",
             "Doe");
 
@@ -32,7 +28,7 @@ public sealed class UpdateUserProfileHandlerTests
         var user = ExistingUser();
         var repository = new FakeUserRepository(user);
         var handler = new UpdateUserProfileHandler(
-            new FakeUserPolicy(), repository, new FakeTenantContext(Organization));
+            new FakeUserPolicy(), repository);
 
         await handler.HandleAsync(Command(user.Id), CancellationToken.None);
 
@@ -48,12 +44,11 @@ public sealed class UpdateUserProfileHandlerTests
         var user = ExistingUser();
         var repository = new FakeUserRepository(user);
         var handler = new UpdateUserProfileHandler(
-            new FakeUserPolicy(), repository, new FakeTenantContext(Organization));
+            new FakeUserPolicy(), repository);
 
         await handler.HandleAsync(Command(user.Id), CancellationToken.None);
 
         repository.Updated!.Status.Should().Be(UserStatus.Invited);
-        repository.Updated.TenantId.Should().Be(Organization);
     }
 
     [Fact]
@@ -61,28 +56,10 @@ public sealed class UpdateUserProfileHandlerTests
     {
         var repository = new FakeUserRepository();
         var handler = new UpdateUserProfileHandler(
-            new FakeUserPolicy(), repository, new FakeTenantContext(Organization));
+            new FakeUserPolicy(), repository);
 
         var act = () => handler.HandleAsync(
             Command(UserId.New()), CancellationToken.None);
-
-        await act.Should().ThrowAsync<NotFoundException>();
-        repository.Updated.Should().BeNull();
-    }
-
-    [Fact]
-    public async Task Throws_not_found_when_the_user_belongs_to_another_organization()
-    {
-        var user = ExistingUser();
-        var repository = new FakeUserRepository(user);
-        // The caller's tenant is a different organization, so the user is
-        // invisible. The command can no longer carry a tenant at all.
-        var handler = new UpdateUserProfileHandler(
-            new FakeUserPolicy(), repository,
-            new FakeTenantContext(TenantId.New()));
-
-        var act = () => handler.HandleAsync(
-            Command(user.Id), CancellationToken.None);
 
         await act.Should().ThrowAsync<NotFoundException>();
         repository.Updated.Should().BeNull();
@@ -97,7 +74,7 @@ public sealed class UpdateUserProfileHandlerTests
             updateEmailError: new BusinessRuleViolationException(
                 PlatformErrors.EmailAlreadyInUse));
         var handler = new UpdateUserProfileHandler(
-            policy, repository, new FakeTenantContext(Organization));
+            policy, repository);
 
         var act = () => handler.HandleAsync(
             Command(user.Id), CancellationToken.None);
@@ -112,7 +89,7 @@ public sealed class UpdateUserProfileHandlerTests
         var user = ExistingUser();
         var repository = new FakeUserRepository(user);
         var handler = new UpdateUserProfileHandler(
-            new FakeUserPolicy(), repository, new FakeTenantContext(Organization));
+            new FakeUserPolicy(), repository);
 
         var command = Command(user.Id) with { Email = "not-an-email" };
 
@@ -128,7 +105,7 @@ public sealed class UpdateUserProfileHandlerTests
         var user = ExistingUser();
         var repository = new FakeUserRepository(user);
         var handler = new UpdateUserProfileHandler(
-            new FakeUserPolicy(), repository, new FakeTenantContext(Organization));
+            new FakeUserPolicy(), repository);
 
         var command = Command(user.Id) with { FirstName = "   " };
 

@@ -1,7 +1,6 @@
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 
-using Acme.SharedKernel.Primitives;
 using Acme.Persistence;
 using Acme.Platform.Domain.ValueObjects;
 using Acme.Platform.Infrastructure.Services;
@@ -23,15 +22,6 @@ public sealed class UserPolicyTests : IAsyncLifetime
         _database = database;
     }
 
-
-    private readonly TenantId _tenantId =
-        TenantId.From(Guid.NewGuid());
-
-    // A second, unrelated organization. Uniqueness is global (ADR-021), so a
-    // collision across these two must be rejected exactly like one within.
-    private readonly TenantId _otherTenantId =
-        TenantId.From(Guid.NewGuid());
-
     private UserAggregate _existing = default!;
     private UserAggregate _other = default!;
     private UserAggregate _elsewhere = default!;
@@ -43,15 +33,11 @@ public sealed class UserPolicyTests : IAsyncLifetime
     {
         await using var context = NewContext();
 
-        _existing = UserAggregate.CreateForTenant(
-            _tenantId, Email.Create("taken@policy.example"), "Taken", "User");
+        _existing = UserAggregate.Create(Email.Create("taken@policy.example"), "Taken", "User");
 
-        _other = UserAggregate.CreateForTenant(
-            _tenantId, Email.Create("other@policy.example"), "Other", "User");
+        _other = UserAggregate.Create(Email.Create("other@policy.example"), "Other", "User");
 
-        _elsewhere = UserAggregate.CreateForTenant(
-            _otherTenantId,
-            Email.Create("elsewhere@policy.example"),
+        _elsewhere = UserAggregate.Create(Email.Create("elsewhere@policy.example"),
             "Else",
             "Where");
 
@@ -65,9 +51,7 @@ public sealed class UserPolicyTests : IAsyncLifetime
         await using var context = NewContext();
 
         await context.Database.ExecuteSqlRawAsync(
-            "DELETE FROM \"Users\" WHERE \"TenantId\" IN ({0}, {1})",
-            _tenantId.Value,
-            _otherTenantId.Value);
+            "DELETE FROM \"Users\" WHERE \"Email\" LIKE '%@policy.example'");
     }
 
     [Fact]

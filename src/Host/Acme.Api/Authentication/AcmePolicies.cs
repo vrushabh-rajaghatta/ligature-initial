@@ -6,15 +6,15 @@ namespace Acme.Api.Authentication;
 /// already authorized, exactly as a claim that is present is already verified.
 /// </summary>
 /// <remarks>
-/// The two policies are exact-match on purpose. A platform administrator does
-/// NOT satisfy the tenant-administrator policy: they have no tenant, so every
-/// tenant-scoped endpoint would throw at <c>ITenantContext</c> anyway — the
-/// policy just says so with a 403 instead of a confusing 401. Hierarchical
-/// roles arrive when a feature needs them, not before.
+/// One policy, since ADR-066 left two roles. <c>PlatformAdministrator</c> is
+/// gone with the tenant concept: it named someone who operated Acme across
+/// tenants, and a deployment serves one customer.
+/// <para>
+/// Still exact-match, not hierarchical. Roles beyond these two arrive when a
+/// feature needs them, not before.
+/// </para>
 /// </remarks>
 public static class AcmePolicies
 {
-    public const string PlatformAdministrator = "PlatformAdministrator";
-
-    public const string TenantAdministrator = "TenantAdministrator";
+    public const string Administrator = "Administrator";
 }

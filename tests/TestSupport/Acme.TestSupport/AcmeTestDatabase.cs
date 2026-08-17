@@ -5,8 +5,6 @@ using Npgsql;
 
 using Acme.Persistence;
 using Acme.Persistence.Initialization;
-using Acme.SharedKernel.Abstractions;
-using Acme.SharedKernel.Primitives;
 
 namespace Acme.TestSupport;
 
@@ -65,13 +63,15 @@ public abstract class AcmeTestDatabase : IAsyncLifetime
     public DbContextOptions<AcmeDbContext> Options { get; }
 
     /// <summary>
-    /// A context scoped to <paramref name="tenant"/>. Passing none gives the
-    /// unauthenticated view the global query filters see before a login
-    /// (ADR-031) — which shows no tenant-owned rows at all, and is almost never
-    /// what a test wants.
+    /// A context over this assembly's database.
     /// </summary>
-    public AcmeDbContext NewContext(ITenantContext? tenant = null) =>
-        new(Options, tenant ?? NoTenant.Instance);
+    /// <remarks>
+    /// Took an <c>ITenantContext</c> until ADR-066, because the global query
+    /// filters made "which tenant is asking" part of what a context was. With
+    /// the filters gone a context sees every row in its database, which is
+    /// exactly one customer's worth.
+    /// </remarks>
+    public AcmeDbContext NewContext() => new(Options);
 
     public async Task InitializeAsync()
     {
@@ -83,7 +83,6 @@ public abstract class AcmeTestDatabase : IAsyncLifetime
         // initializer added tomorrow runs here without anyone remembering to
         // wire it up (ADR-064 §4).
         services.AddPersistence(ConnectionString);
-        services.AddScoped<ITenantContext, NoTenant>();
 
         _services = services.BuildServiceProvider();
 
@@ -196,23 +195,5 @@ public abstract class AcmeTestDatabase : IAsyncLifetime
             slug = slug[..28];
 
         return $"acme_test_{slug}_{Guid.NewGuid():N}"[..(11 + slug.Length + 1 + 8)];
-    }
-
-    /// <summary>
-    /// What the API's tenant context resolves to at boot: no identity, so the
-    /// filters show nothing, and asking for a tenant outright is an error. The
-    /// initializers are written against exactly this — several call
-    /// <c>IgnoreQueryFilters()</c> because of it.
-    /// </summary>
-    private sealed class NoTenant : ITenantContext
-    {
-        public static readonly NoTenant Instance = new();
-
-        public TenantId TenantId =>
-            throw new InvalidOperationException(
-                "No tenant. A test that needs tenant-scoped rows passes its own "
-                + "ITenantContext to NewContext(); this is the seeding view.");
-
-        public TenantId? TenantIdOrNull => null;
     }
 }

@@ -1,12 +1,11 @@
 using Acme.DocumentManagement.Domain.Aggregates.Documents;
-using Acme.SharedKernel.Primitives;
 
 namespace Acme.DocumentManagement.Domain.Tests;
 
 internal static class TestFactory
 {
     public static Document NewDocument() =>
-        Document.Create(TenantId.New(), "Employee Handbook");
+        Document.Create("Employee Handbook");
 
     public static void AddInitial(Document document) =>
         document.AddInitialVersion(

@@ -9,18 +9,18 @@ using Acme.Platform.Contracts;
 namespace Acme.Platform.Infrastructure.Repositories;
 
 /// <summary>
-/// Identity-scoped, deliberately outside the tenant query filter (ADR-031).
+/// Identity-scoped: every caller passes an identity it already owns.
 /// </summary>
 /// <remarks>
-/// Every caller passes an identity it already owns: an id from a signed token
-/// or a consumable grant (login, invitation acceptance, password reset,
-/// change-password), or an email at the two doors where no tenant exists yet
-/// (sign-in, reset request — ADR-021 made email globally unique precisely for
-/// them). Filtering here would break each of those flows for tenant users and
-/// all of them for platform users, who match no tenant filter ever.
-/// Tenant-scoped access goes through the query handlers and
-/// <c>UserRepositoryExtensions.GetRequiredAsync</c>, which checks ownership
-/// explicitly. This class is the entire bypass surface for the Users table.
+/// An id from a signed token or a consumable grant (login, invitation
+/// acceptance, password reset, change-password), or an email at the two doors
+/// where no identity exists yet (sign-in, reset request — ADR-021 made email
+/// unique precisely for them).
+/// <para>
+/// This was described as "the bypass surface for the Users table", because it
+/// sat deliberately outside the tenant query filter. ADR-066 removed the
+/// filter, so there is no longer anything to be outside of.
+/// </para>
 /// </remarks>
 public sealed class UserRepository : IUserRepository
 {

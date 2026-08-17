@@ -61,8 +61,8 @@ OpenAPI, health checks and static files.
 Route groups carry the prefix once:
 
 ```csharp
-var tenants = app.MapGroup("/api/platform/tenants");
-tenants.MapGet("/{id:guid}", GetAsync);
+var users = app.MapGroup("/api/platform/users");
+users.MapGet("/{id:guid}", GetAsync);
 ```
 
 **Reference:** [Documents/GetDocumentEndpoint.cs](../../src/Host/Acme.Api/Endpoints/Documents/GetDocumentEndpoint.cs) ·
@@ -116,9 +116,9 @@ handler.
 **Reference:** [DocumentManagement/Queries/GetDocument/](../../src/DocumentManagement/Acme.DocumentManagement.Application/Queries/GetDocument/) ·
 **Test:** `QueryConventionTests`
 
-> This is the majority-minority rule: most contexts written after Product
-> dropped query records, so the grandfathered list is long. The convention
-> still holds for new work — see the decision note at the end.
+> **The grandfathered list is empty.** Its last two entries were the tenant
+> query folders, deleted outright by ADR-066 rather than retired — which is
+> the only other way one of these lists is allowed to shrink.
 
 ---
 

@@ -3,7 +3,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 using Acme.Persistence.Initialization;
-using Acme.Persistence.Initialization.Platform;
 
 namespace Acme.Persistence;
 
@@ -33,8 +32,6 @@ public static class DependencyInjection
     {
         services.AddDbContext<AcmeDbContext>(options =>
             options.UseNpgsql(connectionString));
-
-        services.AddScoped<IDataInitializer, TenantInitializer>();
 
         return services;
     }

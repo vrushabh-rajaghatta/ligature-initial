@@ -1,7 +1,6 @@
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 
-using Acme.SharedKernel.Primitives;
 using Acme.Persistence;
 using Acme.Platform.Application.Commands.SetUserPassword;
 using Acme.Platform.Application.Services;
@@ -34,9 +33,6 @@ public sealed class SetUserPasswordHandlerTests : IAsyncLifetime
 
     private const string CorrectPassword = "correct horse battery";
 
-    private readonly TenantId _tenantId =
-        TenantId.From(Guid.NewGuid());
-
     private UserAggregate _user = default!;
 
     private AcmeDbContext NewContext() =>
@@ -51,9 +47,7 @@ public sealed class SetUserPasswordHandlerTests : IAsyncLifetime
     {
         await using var context = NewContext();
 
-        _user = UserAggregate.CreateForTenant(
-            _tenantId,
-            Email.Create($"credential.{Guid.NewGuid():N}@policy.example"),
+        _user = UserAggregate.Create(Email.Create($"credential.{Guid.NewGuid():N}@policy.example"),
             "Credential",
             "User");
 
@@ -70,8 +64,7 @@ public sealed class SetUserPasswordHandlerTests : IAsyncLifetime
         // would still work, but it would hide whether the constraint is doing
         // its job — Cascades_the_credential_when_the_user_is_deleted asserts it.
         await context.Database.ExecuteSqlRawAsync(
-            "DELETE FROM \"Users\" WHERE \"TenantId\" = {0}",
-            _tenantId.Value);
+            "DELETE FROM \"Users\" WHERE \"Email\" LIKE '%@test.example'");
     }
 
     private async Task SetPasswordAsync(string password)

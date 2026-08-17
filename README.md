@@ -1,7 +1,8 @@
 # Acme — Document Management Platform
 
-A multi-tenant B2B SaaS starter, derived from the RegOS codebase: its platform
-chassis (tenancy, identity, sessions), its document-management vertical, and —
+A single-tenant B2B SaaS starter — **one deployment and one database per
+customer** (ADR-066) — derived from the RegOS codebase: its platform chassis
+(identity, sessions), its document-management vertical, and —
 most importantly — its **executable architecture conventions**. The first
 product surface is document management; further contexts (Products, …) are
 meant to be built on top, one bounded context at a time.
@@ -51,8 +52,7 @@ they exist **only** when the environment is Development:
 
 | Account | Password | Role |
 |---|---|---|
-| `platform@acme.local` | `platform-password` | Platform administrator |
-| `dev@acme.local` | `development-password` | Tenant administrator |
+| `dev@acme.local` | `development-password` | Administrator |
 
 ### Already running a PostgreSQL on 5432?
 
@@ -92,8 +92,8 @@ from the migration chain (ADR-064) and drop it afterwards. They default to
 export ACME_TEST_POSTGRES="Host=localhost;Port=5432;Database=postgres;Username=postgres;Password=postgres"
 ```
 
-All 378 tests were green at derivation time. `npm run build` and
-`npm run lint` are clean.
+All 351 tests are green (378 before ADR-066, which deleted 27 whose subject
+it removed). `npm run build` and `npm run lint` are clean.
 
 ---
 
@@ -104,11 +104,11 @@ whitelist asserted by a test, and it currently says `0`:
 
 | | |
 |---|---|
-| `src/Platform` | Tenancy and identity: `Tenant`, `User`, `UserCredential`, `Session`, `RefreshToken`, `Invitation`, `PasswordReset`. Cookie sessions (ADR-025), tenancy derived from a signed claim, never a header (ADR-024). Reaches the product domain only through `Platform.Contracts` (a single `UserId`). |
-| `src/DocumentManagement` | The first product context: `Document` → immutable `DocumentVersion`s, Draft → Active → Archived lifecycle, tenant-owned, bytes behind the `IFileStorage` port. |
-| `src/Shared/Acme.SharedKernel` | `AggregateRoot<TId>`, `Entity<TId>`, `StronglyTypedId`, `TenantId`, `ITenantContext`, the four-exception hierarchy. ADR-017 scope — concepts, not patterns. |
+| `src/Platform` | Identity: `User`, `UserCredential`, `Session`, `RefreshToken`, `Invitation`, `PasswordReset`. Cookie sessions (ADR-025). No `Tenant` — ADR-066 made the deployment the customer. Reaches the product domain only through `Platform.Contracts` (a single `UserId`). |
+| `src/DocumentManagement` | The first product context: `Document` → immutable `DocumentVersion`s, Draft → Active → Archived lifecycle, bytes behind the `IFileStorage` port. |
+| `src/Shared/Acme.SharedKernel` | `AggregateRoot<TId>`, `Entity<TId>`, `StronglyTypedId`, the four-exception hierarchy. ADR-017 scope — concepts, not patterns. |
 | `src/Storage` | `IFileStorage` + `LocalFileStorage`. A driven port, not a context. |
-| `src/Persistence` | The one `AcmeDbContext`, all EF configuration, migrations, seed initializers. Tenant isolation is **fail-closed query filters** (ADR-031) — read `ApplyTenantFilters` before adding any entity. |
+| `src/Persistence` | The one `AcmeDbContext`, all EF configuration, migrations, seed initializers. **No global query filters** — isolation between customers is the database boundary (ADR-066). |
 | `src/Host/Acme.Api` | Composition root. Endpoint-per-file, semantic exceptions mapped to status codes in middleware, endpoints never catch. |
 | `tests/Architecture` | The immune system: 44 facts enforcing routes, layout, identity, the dependency graph, deterministic ordering, client/API route alignment. **Grandfathered lists are empty and must stay empty.** |
 
@@ -138,7 +138,7 @@ The frontend (`web/acme-web`) is feature-first: `auth`, `platform`, `settings`,
    slice shape in the conventions doc. Copy
    [DocumentId.cs](src/DocumentManagement/Acme.DocumentManagement.Domain/Aggregates/Documents/DocumentId.cs)
    for identity — never a record struct.
-3. Entity registration + tenant filter in `AcmeDbContext`, EF config under
+3. Entity registration in `AcmeDbContext`, EF config under
    `Persistence/Configurations/<Context>/`, one migration.
 4. Add the context to `DomainMayReference` in `ContextDependencyTests` (edge
    count updates with it) and run
@@ -147,9 +147,13 @@ The frontend (`web/acme-web`) is feature-first: `auth`, `platform`, `settings`,
 
 ## Known gaps at derivation time
 
-- The **shared-plus-extensible** tenant-filter shape (platform baseline a
-  tenant may extend) has no entity yet; its isolation test returns with the
-  first shared catalogue (see RegOS's `SharedPlusExtensibleIsolationTests`).
+- **Provisioning has no home yet.** ADR-066 moved it out of the application:
+  creating a customer means create database → migrate → seed administrator →
+  register hostname, and only the third step exists (`AdministratorSeeder`).
+  The rest is a deployment pipeline nobody has written.
+- **File storage is not partitioned per customer.** `LocalFileStorage` writes
+  to `documents/{documentId}/…` with no customer segment, so "restore this
+  customer" and "erase this customer" stop at the database boundary.
 - No file **download** endpoint yet — uploads store bytes and metadata, the
   detail view shows versions; serving bytes back is the natural next story.
 - `LocalFileStorage` writes to a local directory; a blob-storage adapter slots

@@ -40,25 +40,19 @@ public sealed class JwtAccessTokenIssuer : IAccessTokenIssuer
 
         var claims = new Dictionary<string, object>
         {
-            // The user id is the subject; the tenant travels beside it and
-            // is what every scoped query is filtered by. The role rides along
-            // for the authorization policies — see AcmeClaims.Role for why
-            // that stopped being forbidden (ADR-033). Still no name or status
+            // The user id is the subject. The role rides along for the
+            // authorization policies — see AcmeClaims.Role for why that
+            // stopped being forbidden (ADR-033). Still no name or status
             // claims: those really are snapshots nothing downstream checks.
+            //
+            // A tenant claim travelled here until ADR-066. Which customer a
+            // token belongs to is now the deployment that issued it, and a
+            // token issued elsewhere fails on issuer and signature anyway.
             [JwtRegisteredClaimNames.Sub] = user.Id.Value.ToString(),
             [JwtRegisteredClaimNames.Email] = user.Email.Value,
             [JwtRegisteredClaimNames.Jti] = Guid.NewGuid().ToString(),
             [AcmeClaims.Role] = user.Role.ToString()
         };
-
-        // A platform user has no tenant, so their token carries no tenant
-        // claim — absent, not empty. ITenantContext.TenantId throws for them
-        // and the query filters resolve to no rows: platform identity never
-        // silently widens into tenant access (ADR-030).
-        if (user.TenantId is not null)
-        {
-            claims[AcmeClaims.TenantId] = user.TenantId.Value.ToString();
-        }
 
         var descriptor = new SecurityTokenDescriptor
         {

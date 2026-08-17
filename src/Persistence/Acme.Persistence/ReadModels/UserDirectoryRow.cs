@@ -17,11 +17,6 @@ public sealed class UserDirectoryRow
 {
     public Guid Id { get; init; }
 
-    // Null for a platform user. A directory query comparing this against a
-    // caller's tenant can never match null, so platform users are invisible
-    // in every tenant's directory without any code hiding them.
-    public Guid? TenantId { get; init; }
-
     public string FirstName { get; init; } = default!;
 
     public string LastName { get; init; } = default!;

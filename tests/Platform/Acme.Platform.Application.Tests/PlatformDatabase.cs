@@ -1,3 +1,5 @@
+using Microsoft.EntityFrameworkCore;
+
 using Acme.TestSupport;
 
 namespace Acme.Platform.Application.Tests;
@@ -28,3 +30,37 @@ public sealed class PlatformDatabase : AcmeTestDatabase
 /// </remarks>
 [CollectionDefinition(PlatformDatabase.Collection)]
 public sealed class PlatformDatabaseCollection : ICollectionFixture<PlatformDatabase>;
+
+/// <summary>
+/// Empties every person-scoped table, children first.
+/// </summary>
+/// <remarks>
+/// The directory queries used to scope themselves by <c>TenantId</c>, which
+/// isolated each test class's rows from every other class sharing this
+/// assembly's database (ADR-064 §2). ADR-066 removed the column, so a class
+/// that asserts on a total count has to own the table outright instead.
+/// <para>
+/// Safe because every database-touching class here is in one xUnit collection
+/// and therefore runs serially — a class has the database to itself between
+/// its own <c>InitializeAsync</c> and <c>DisposeAsync</c>.
+/// </para>
+/// </remarks>
+public static class UserTables
+{
+    /// <remarks>
+    /// One literal statement rather than a loop interpolating table names:
+    /// interpolation into <c>ExecuteSqlRawAsync</c> raises EF1002, and the
+    /// build runs warning-free. Children precede parents so the foreign keys
+    /// hold at every step.
+    /// </remarks>
+    public static Task ClearAsync(Acme.Persistence.AcmeDbContext context)
+        => context.Database.ExecuteSqlRawAsync(
+            """
+            DELETE FROM "RefreshTokens";
+            DELETE FROM "Sessions";
+            DELETE FROM "UserCredentials";
+            DELETE FROM "Invitations";
+            DELETE FROM "PasswordResets";
+            DELETE FROM "Users";
+            """);
+}

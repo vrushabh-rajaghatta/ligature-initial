@@ -3,7 +3,6 @@ import { HomePage } from "./pages/HomePage";
 import { AppLayout } from "@/shared/layout/AppLayout";
 import { PlatformLayout } from "@/features/platform/layout/PlatformLayout";
 import { PlatformIndexRedirect } from "@/features/platform/layout/PlatformIndexRedirect";
-import { TenantsPage } from "@/features/platform/tenants/pages/TenantsPage";
 import { UsersPage } from "@/features/platform/users/pages/UsersPage";
 import { UserDetailsPage } from "@/features/platform/users/pages/UserDetailsPage";
 import { LoginPage } from "@/features/auth/pages/LoginPage";
@@ -89,10 +88,6 @@ export const router = createBrowserRouter([
               {
                 index: true,
                 element: <PlatformIndexRedirect />,
-              },
-              {
-                path: "tenants",
-                element: <TenantsPage />,
               },
               {
                 path: "users",

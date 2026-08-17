@@ -23,10 +23,8 @@ interface InviteUserFormProps {
 export function InviteUserForm({ onSuccess }: InviteUserFormProps) {
   const mutation = useInviteUser();
 
-  // There is no organization picker: a user is invited into the caller's own
-  // tenant, which the API reads from the access token. Inviting into
-  // someone else's organization is not a permission check that could be
-  // forgotten — it cannot be expressed.
+  // No picker of any kind: a user is invited into this deployment, which is
+  // the only one there is (ADR-066).
   const {
     control,
     handleSubmit,

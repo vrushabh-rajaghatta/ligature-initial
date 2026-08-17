@@ -23,11 +23,14 @@ public sealed class QueryConventionTests
     /// it as the handler parameter, construct it at the endpoint. Best done
     /// when you are already in that slice for another reason.
     /// </summary>
-    private static readonly HashSet<string> Grandfathered =
-    [
-        "src/Platform/Acme.Platform.Application/Queries/GetTenantUsers",
-        "src/Platform/Acme.Platform.Application/Queries/GetTenants"
-    ];
+    /// <remarks>
+    /// <b>Empty, and it stays that way.</b> Both entries were
+    /// <c>GetTenants</c> and <c>GetTenantUsers</c>, and ADR-066 deleted the
+    /// folders rather than retiring the exemptions — which is the only other
+    /// way a list like this is allowed to shrink. A new entry to unblock new
+    /// code defeats the mechanism entirely.
+    /// </remarks>
+    private static readonly HashSet<string> Grandfathered = [];
 
     [Fact]
     public void Every_query_folder_declares_a_query_record()

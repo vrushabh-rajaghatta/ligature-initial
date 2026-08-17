@@ -2,7 +2,6 @@ using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
-using Acme.SharedKernel.Primitives;
 using Acme.Persistence;
 using Acme.Platform.Application.Authentication;
 using Acme.Platform.Application.Commands.Login;
@@ -10,7 +9,6 @@ using Acme.Platform.Application.Commands.SetUserPassword;
 using Acme.Platform.Domain.Aggregates.User;
 using Acme.Platform.Domain.ValueObjects;
 
-using TenantAggregate = Acme.Platform.Domain.Aggregates.Tenant.Tenant;
 using Acme.Platform.Infrastructure.Authentication;
 using Acme.Platform.Infrastructure.Repositories;
 using Acme.Platform.Infrastructure.Services;
@@ -36,9 +34,6 @@ public sealed class LoginHandlerTests : IAsyncLifetime
 
 
     private const string CorrectPassword = "correct horse battery";
-
-    private readonly TenantId _tenantId =
-        TenantId.From(Guid.NewGuid());
 
     private readonly string _email =
         $"login.{Guid.NewGuid():N}@policy.example";
@@ -70,20 +65,13 @@ public sealed class LoginHandlerTests : IAsyncLifetime
             new RefreshTokenRepository(context),
             new SessionRepository(context),
             new UserCredentialRepository(context),
-            new UserRepository(context),
-            new TenantRepository(context));
+            new UserRepository(context));
 
     public async Task InitializeAsync()
     {
         await using var context = NewContext();
 
-        // The tenant must genuinely exist: sign-in now checks its status, and
-        // a user pointing at no tenant is rejected as misprovisioned.
-        context.Tenants.Add(
-            TenantAggregate.Create(_tenantId, "Login Test Tenant"));
-
-        _user = UserAggregate.CreateForTenant(
-            _tenantId, Email.Create(_email), "Login", "User");
+        _user = UserAggregate.Create(Email.Create(_email), "Login", "User");
 
         _user.Activate();
 
@@ -104,43 +92,10 @@ public sealed class LoginHandlerTests : IAsyncLifetime
         await using var context = NewContext();
 
         // Users only: credentials cascade (ADR-026). This fixture once leaked
-        // four orphaned credentials because it deleted users by organization
-        // and credentials one at a time; that is now impossible to get wrong.
+        // four orphaned credentials because it deleted users one at a time;
+        // that is now impossible to get wrong.
         await context.Database.ExecuteSqlRawAsync(
-            "DELETE FROM \"Users\" WHERE \"TenantId\" = {0}",
-            _tenantId.Value);
-
-        await context.Database.ExecuteSqlRawAsync(
-            "DELETE FROM \"Tenants\" WHERE \"Id\" = {0}",
-            _tenantId.Value);
-    }
-
-    [Fact]
-    public async Task Rejects_a_user_whose_tenant_is_retired()
-    {
-        // "No one signs in" is the deactivated tenant's contract
-        // (Tenant.Deactivate); sign-in is where it is enforced, with the same
-        // message as every other rejection (ADR-022).
-        await using (var context = NewContext())
-        {
-            var tenant = await context.Tenants.SingleAsync(
-                x => x.Id == _tenantId);
-            tenant.Deactivate();
-            await context.SaveChangesAsync();
-        }
-
-        try
-        {
-            await ShouldFailAsync(_email, CorrectPassword);
-        }
-        finally
-        {
-            await using var context = NewContext();
-            var tenant = await context.Tenants.SingleAsync(
-                x => x.Id == _tenantId);
-            tenant.Activate();
-            await context.SaveChangesAsync();
-        }
+            "DELETE FROM \"Users\" WHERE \"Email\" LIKE '%@test.example'");
     }
 
     private async Task<AuthenticatedSession> LoginAsync(string email, string password)
@@ -210,9 +165,7 @@ public sealed class LoginHandlerTests : IAsyncLifetime
     {
         await using var context = NewContext();
 
-        var withoutCredential = UserAggregate.CreateForTenant(
-            _tenantId,
-            Email.Create($"nocred.{Guid.NewGuid():N}@policy.example"),
+        var withoutCredential = UserAggregate.Create(Email.Create($"nocred.{Guid.NewGuid():N}@policy.example"),
             "No",
             "Credential");
 
@@ -248,9 +201,7 @@ public sealed class LoginHandlerTests : IAsyncLifetime
     {
         await using var context = NewContext();
 
-        var invited = UserAggregate.CreateForTenant(
-            _tenantId,
-            Email.Create($"invited.{Guid.NewGuid():N}@policy.example"),
+        var invited = UserAggregate.Create(Email.Create($"invited.{Guid.NewGuid():N}@policy.example"),
             "Invited",
             "User");
 

@@ -1,6 +1,7 @@
 # Acme
 
-A multi-tenant document-management platform — the first vertical of a product
+A single-tenant document-management platform — one deployment and one
+database per customer (ADR-066) — and the first vertical of a product
 that will grow one bounded context at a time. Derived from the RegOS codebase;
 "Acme" is a placeholder name (see README § Rename me first).
 
@@ -39,7 +40,7 @@ components, every mutation's error state rendered (SC-106).
 ## Architecture canon
 
 1. **[docs/adr/](docs/adr/)** — inherited from RegOS with original numbers
-   (code cites them); numbering has gaps. Next number is **ADR-066**. Never
+   (code cites them); numbering has gaps. Next number is **ADR-067**. Never
    edit an accepted ADR; supersede it.
 2. **[docs/engineering/slice-conventions.md](docs/engineering/slice-conventions.md)** — mechanical file/folder rules.
 3. Where code and docs disagree, **the code is the truth** — then fix the doc
@@ -49,10 +50,17 @@ components, every mutation's error state rendered (SC-106).
 
 - **ADR-016** — repositories for writes, `AcmeDbContext` + `AsNoTracking()`
   for reads. A query handler never loads an aggregate.
-- **ADR-031** — tenant isolation is fail-closed EF query filters, all in
-  `AcmeDbContext.ApplyTenantFilters`. Any entity with a `TenantId` and no
-  filter fails `TenantFilterArchitectureTests`. Three shapes: fail-closed
-  tenant-owned, shared-plus-extensible, global world facts.
+- **ADR-066** — **the deployment is the tenant.** One database per customer,
+  so there is no `TenantId`, no `ITenantContext` and no query filter anywhere.
+  `AcmeDbContext` has no global filters and that is the decision, not an
+  omission. Supersedes ADR-013/024/030/031/060. If a second customer must ever
+  share one deployment, read that ADR's *Revisit When* before adding a filter
+  back.
+- Provisioning is an infrastructure pipeline, not an application feature:
+  create database, migrate, seed the administrator, register the hostname.
+  `AdministratorSeeder` does the third step — from configuration, on an empty
+  database only, and **never with a password** (the first admin is invited and
+  chooses their own).
 - **ADR-024 / ADR-025** — tenancy is derived from identity (a signed claim),
   never asserted by the caller; sessions are server-owned HttpOnly cookies.
 - **ADR-012 / ADR-022** — four semantic exceptions map to 401/404/409/400 in
@@ -90,7 +98,7 @@ web/acme-web                       React frontend, feature-first
 tests/                             mirrors src/, plus tests/Architecture/
 ```
 
-Contexts today: **Platform** (tenancy + identity) · **DocumentManagement**.
+Contexts today: **Platform** (identity) · **DocumentManagement**.
 The dependency graph between contexts is a whitelist in
 `ContextDependencyTests` and currently holds **0 edges** — adding one is a
 decision, made in an ADR, then declared there.
@@ -99,8 +107,9 @@ decision, made in an ADR, then declared there.
 
 - One story at a time, delivered as a vertical slice — domain through API
   through UI.
-- Use the ubiquitous language: `Document`, `DocumentVersion`, `Tenant`,
-  `User` — never `Record`, `Item`, `Data`.
+- Use the ubiquitous language: `Document`, `DocumentVersion`, `User` — never
+  `Record`, `Item`, `Data`. `Tenant` is retired (ADR-066); a deployment serves
+  one customer and does not name them.
 - Generic folders (`Common`, `Shared`, `Helpers`, `Utils`, `Misc`) are
   prohibited in `src/` without an ADR.
 - New bounded context, new cross-context dependency, or a change to an

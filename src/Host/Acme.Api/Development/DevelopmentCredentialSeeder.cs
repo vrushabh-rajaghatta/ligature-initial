@@ -2,7 +2,6 @@ using Acme.Platform.Application.Commands.SetUserPassword;
 using Acme.Platform.Domain.Aggregates.User;
 using Acme.Platform.Domain.Aggregates.UserCredential;
 using Acme.Platform.Domain.ValueObjects;
-using Acme.SharedKernel.Primitives;
 
 using UserAggregate = Acme.Platform.Domain.Aggregates.User.User;
 
@@ -25,17 +24,6 @@ public static class DevelopmentCredentialSeeder
     // equally non-secret, in a database seeded with fictional companies.
     public const string Password = "development-password";
 
-    /// <summary>
-    /// Demo MAH Ltd. — the tenant that owns the seeded demo catalogue, and the
-    /// tenant the UI acted as through the X-Tenant-Id header. Now that tenancy
-    /// comes from this account's token, it has to be the same tenant or the
-    /// development UI would open onto an empty system. The guid is shared with
-    /// the seeded organization of the same name: the Tenants backfill preserved
-    /// organization ids (ADR-030).
-    /// </summary>
-    private static readonly Guid DemoTenantId =
-        Guid.Parse("30000000-0000-0000-0000-000000000003");
-
     public static async Task SeedAsync(IServiceProvider services)
     {
         var users = services.GetRequiredService<IUserRepository>();
@@ -50,14 +38,13 @@ public static class DevelopmentCredentialSeeder
 
         if (user is null)
         {
-            user = UserAggregate.CreateForTenant(
-                new TenantId(DemoTenantId),
+            user = UserAggregate.Create(
                 email,
                 "Development",
                 "User",
                 // The account that exercises the whole UI, including user
                 // administration — so it holds the role that may (ADR-033).
-                UserRole.TenantAdministrator);
+                UserRole.Administrator);
 
             // Created Invited, like every user. Sign-in requires Active, and
             // there is no invitation acceptance flow yet to do this properly.

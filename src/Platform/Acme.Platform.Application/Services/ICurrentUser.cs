@@ -1,6 +1,5 @@
 using Acme.Platform.Domain.Aggregates.User;
 using Acme.Platform.Domain.ValueObjects;
-using Acme.SharedKernel.Primitives;
 using Acme.Platform.Contracts;
 
 namespace Acme.Platform.Application.Services;
@@ -10,23 +9,22 @@ namespace Acme.Platform.Application.Services;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Deliberately five members and no more. The pressure on a type like this is
+/// Deliberately four members and no more. The pressure on a type like this is
 /// always to grow — a display name here, the organization's name there,
 /// because a page needs it — until every service depends on it and none of
 /// them can say why. Everything absent from this interface can be resolved
 /// from <see cref="UserId"/> by whoever actually needs it.
 /// </para>
 /// <para>
-/// <see cref="Role"/> arrived with ADR-033, in the minimal three-value shape
+/// <see cref="Role"/> arrived with ADR-033, in the minimal shape
 /// the epic needed — not the permission matrix this doc once warned about
 /// guessing at. Permissions beyond the role stay absent until decided.
 /// </para>
 /// <para>
-/// This is a sibling of <c>ITenantContext</c>, not a replacement. That answers
-/// <em>which tenant is this request scoped to</em>, which is an infrastructure
-/// question every context asks; this answers <em>which person is calling</em>,
-/// which is a Platform concept and typed accordingly. They agree today because
-/// a user belongs to exactly one tenant (ADR-030).
+/// Had a <c>TenantId</c> sibling in <c>ITenantContext</c> until ADR-066. With
+/// one deployment per customer there is no scoping question left to answer —
+/// only <em>which person is calling</em>, which is a Platform concept and
+/// typed accordingly.
 /// </para>
 /// </remarks>
 public interface ICurrentUser
@@ -39,16 +37,10 @@ public interface ICurrentUser
 
     /// <summary>
     /// The caller's user id. Throws when the request is not authenticated,
-    /// rather than returning an empty id — the same reasoning as
-    /// <c>ITenantContext.TenantId</c>: an unauthenticated default must never be
-    /// mistakable for a real caller.
+    /// rather than returning an empty id — an unauthenticated
+    /// default must never be mistakable for a real caller.
     /// </summary>
     UserId UserId { get; }
-
-    /// <summary>
-    /// The tenant the caller belongs to. Throws when unauthenticated.
-    /// </summary>
-    TenantId TenantId { get; }
 
     /// <summary>
     /// The caller's email address. Throws when unauthenticated.

@@ -19,7 +19,7 @@ public static class GetUserEndpoint
         // User administration belongs to the tenant administrator
         // (ADR-033): a Member is refused with 403, and a platform
         // administrator has no tenant to administer users in.
-        .RequireAuthorization(AcmePolicies.TenantAdministrator);
+        .RequireAuthorization(AcmePolicies.Administrator);
 
         return app;
     }

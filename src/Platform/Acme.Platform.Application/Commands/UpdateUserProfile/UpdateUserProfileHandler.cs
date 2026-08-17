@@ -2,7 +2,6 @@ using Acme.Platform.Application.Common;
 using Acme.Platform.Application.Services;
 using Acme.Platform.Domain.Aggregates.User;
 using Acme.Platform.Domain.ValueObjects;
-using Acme.SharedKernel.Abstractions;
 using Acme.Platform.Contracts;
 
 namespace Acme.Platform.Application.Commands.UpdateUserProfile;
@@ -11,16 +10,13 @@ public sealed class UpdateUserProfileHandler
 {
     private readonly IUserPolicy _userPolicy;
     private readonly IUserRepository _repository;
-    private readonly ITenantContext _tenantContext;
 
     public UpdateUserProfileHandler(
         IUserPolicy userPolicy,
-        IUserRepository repository,
-        ITenantContext tenantContext)
+        IUserRepository repository)
     {
         _userPolicy = userPolicy;
         _repository = repository;
-        _tenantContext = tenantContext;
     }
 
     public async Task HandleAsync(
@@ -28,11 +24,11 @@ public sealed class UpdateUserProfileHandler
         CancellationToken cancellationToken)
     {
         var user = await _repository.GetRequiredAsync(
-            command.UserId, _tenantContext.TenantId, cancellationToken);
+            command.UserId, cancellationToken);
 
         var email = Email.Create(command.Email);
 
-        // Unscoped by tenant (ADR-021), and excluding the user itself so
+        // Excluding the user itself so
         // an unchanged email never collides with its own row.
         await _userPolicy.EnsureEmailIsUniqueForUpdateAsync(
             user.Id,

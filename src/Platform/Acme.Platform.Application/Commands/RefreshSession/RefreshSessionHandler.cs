@@ -3,7 +3,6 @@ using Acme.Platform.Application.Commands.Login;
 using Acme.Platform.Application.Services;
 using Acme.Platform.Domain.Aggregates.RefreshToken;
 using Acme.Platform.Domain.Aggregates.Session;
-using Acme.Platform.Domain.Aggregates.Tenant;
 using Acme.Platform.Domain.Aggregates.User;
 using Acme.SharedKernel.Exceptions;
 using Acme.Platform.Contracts;
@@ -27,7 +26,6 @@ public sealed class RefreshSessionHandler
     private readonly IRefreshTokenRepository _refreshTokens;
     private readonly ISessionRepository _sessionStore;
     private readonly IUserRepository _users;
-    private readonly ITenantRepository _tenants;
 
     public RefreshSessionHandler(
         SessionFactory sessions,
@@ -35,8 +33,7 @@ public sealed class RefreshSessionHandler
         IRefreshTokenIssuer issuer,
         IRefreshTokenRepository refreshTokens,
         ISessionRepository sessionStore,
-        IUserRepository users,
-        ITenantRepository tenants)
+        IUserRepository users)
     {
         _sessions = sessions;
         _revoker = revoker;
@@ -44,7 +41,6 @@ public sealed class RefreshSessionHandler
         _refreshTokens = refreshTokens;
         _sessionStore = sessionStore;
         _users = users;
-        _tenants = tenants;
     }
 
     public async Task<AuthenticatedSession> HandleAsync(
@@ -94,21 +90,6 @@ public sealed class RefreshSessionHandler
         {
             throw new AuthenticationFailedException(
                 AuthenticationErrors.InvalidCredentials);
-        }
-
-        // The tenant too: retiring a tenant ends its users' sessions at their
-        // next refresh — at most the access token's fifteen minutes — without
-        // touching any user record. Platform users have no tenant to check.
-        if (user.TenantId is not null)
-        {
-            var tenant = await _tenants.GetByIdAsync(
-                user.TenantId, cancellationToken);
-
-            if (tenant is null || tenant.Status != TenantStatus.Active)
-            {
-                throw new AuthenticationFailedException(
-                    AuthenticationErrors.InvalidCredentials);
-            }
         }
 
         // The session the presented token belongs to. Revoked from the sessions

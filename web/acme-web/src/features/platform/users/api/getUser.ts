@@ -6,9 +6,6 @@ import type { UserDetails } from "../types/UserDetails";
 export class UserNotFoundError extends Error {}
 
 export async function getUser(userId: string): Promise<UserDetails> {
-  // The tenant travels inside the token, not the query string or a header -
-  // the API decides visibility from a signed claim, and the caller cannot ask
-  // to see another organization's user.
   const response = await apiFetch(buildUrl(`/api/platform/users/${userId}`));
 
   if (response.status === 404) {

@@ -1,7 +1,6 @@
 using FluentAssertions;
 
 using Acme.DocumentManagement.Domain.Aggregates.Documents;
-using Acme.SharedKernel.Primitives;
 
 namespace Acme.DocumentManagement.Domain.Tests;
 
@@ -29,11 +28,8 @@ public class DocumentCreationTests
     [Fact]
     public void Create_SetsProvidedValues()
     {
-        var tenantId = TenantId.New();
+        var document = Document.Create("  Risk Management File  ");
 
-        var document = Document.Create(tenantId, "  Risk Management File  ");
-
-        document.TenantId.Should().Be(tenantId);
         document.Name.Should().Be("Risk Management File");
         document.CreatedOnUtc.Should().NotBe(default);
     }

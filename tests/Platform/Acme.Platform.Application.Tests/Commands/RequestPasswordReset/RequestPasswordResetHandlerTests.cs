@@ -1,7 +1,6 @@
 using FluentAssertions;
 using Microsoft.Extensions.Options;
 
-using Acme.SharedKernel.Primitives;
 using Acme.Platform.Application.Commands.RequestPasswordReset;
 using Acme.Platform.Application.PasswordResets;
 using Acme.Platform.Application.Tests.Fakes;
@@ -23,8 +22,7 @@ public sealed class RequestPasswordResetHandlerTests
     private const string Address = "john.doe@example.com";
 
     private static UserAggregate NewUser() =>
-        UserAggregate.CreateForTenant(
-            TenantId.New(), Email.Create(Address), "John", "Doe");
+        UserAggregate.Create(Email.Create(Address), "John", "Doe");
 
     private static UserAggregate ActiveUser()
     {
