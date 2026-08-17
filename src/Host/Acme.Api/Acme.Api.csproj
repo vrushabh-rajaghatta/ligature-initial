@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Swashbuckle.AspNetCore" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Platform\Acme.Platform.Application\Acme.Platform.Application.csproj" />
+    <ProjectReference Include="..\..\Platform\Acme.Platform.Infrastructure\Acme.Platform.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\DocumentManagement\Acme.DocumentManagement.Application\Acme.DocumentManagement.Application.csproj" />
+    <ProjectReference Include="..\..\DocumentManagement\Acme.DocumentManagement.Infrastructure\Acme.DocumentManagement.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

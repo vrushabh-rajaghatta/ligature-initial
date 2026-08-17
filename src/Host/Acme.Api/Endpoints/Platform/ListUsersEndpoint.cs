@@ -1,0 +1,57 @@
+using Acme.Api.Authentication;
+using Acme.Platform.Application.Queries.GetUsers;
+using Acme.Platform.Domain.Aggregates.User;
+
+namespace Acme.Api.Endpoints.Platform;
+
+public static class ListUsersEndpoint
+{
+    public static IEndpointRouteBuilder MapListUsers(
+        this IEndpointRouteBuilder app)
+    {
+        app.MapGet(
+            "/api/platform/users",
+            HandleAsync)
+        .WithName("ListUsers")
+        .WithSummary("List users")
+        .WithTags("Platform")
+        // User administration belongs to the tenant administrator
+        // (ADR-033): a Member is refused with 403, and a platform
+        // administrator has no tenant to administer users in.
+        .RequireAuthorization(AcmePolicies.TenantAdministrator);
+
+        return app;
+    }
+
+    private static async Task<IResult> HandleAsync(
+        GetUsersHandler handler,
+        CancellationToken cancellationToken,
+        string? search = null,
+        string? status = null,
+        int page = GetUsersQuery.DefaultPage,
+        int pageSize = GetUsersQuery.DefaultPageSize)
+    {
+        // An unparseable status is a malformed request, not an empty result.
+        UserStatus? parsedStatus = null;
+
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            if (!Enum.TryParse<UserStatus>(status, ignoreCase: true, out var value))
+                return Results.Problem(
+                    detail: $"'{status}' is not a valid user status.",
+                    statusCode: StatusCodes.Status400BadRequest);
+
+            parsedStatus = value;
+        }
+
+        var result = await handler.HandleAsync(
+            new GetUsersQuery(
+                search,
+                parsedStatus,
+                page,
+                pageSize),
+            cancellationToken);
+
+        return Results.Ok(result);
+    }
+}

@@ -1,0 +1,35 @@
+<Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/src/Host/">
+    <Project Path="src/Host/Acme.Api/Acme.Api.csproj" />
+  </Folder>
+  <Folder Name="/src/Platform/">
+    <Project Path="src/Platform/Acme.Platform.Application/Acme.Platform.Application.csproj" />
+    <Project Path="src/Platform/Acme.Platform.Contracts/Acme.Platform.Contracts.csproj" />
+    <Project Path="src/Platform/Acme.Platform.Domain/Acme.Platform.Domain.csproj" />
+    <Project Path="src/Platform/Acme.Platform.Infrastructure/Acme.Platform.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/src/DocumentManagement/">
+    <Project Path="src/DocumentManagement/Acme.DocumentManagement.Application/Acme.DocumentManagement.Application.csproj" />
+    <Project Path="src/DocumentManagement/Acme.DocumentManagement.Domain/Acme.DocumentManagement.Domain.csproj" />
+    <Project Path="src/DocumentManagement/Acme.DocumentManagement.Infrastructure/Acme.DocumentManagement.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/src/Persistence/">
+    <Project Path="src/Persistence/Acme.Persistence/Acme.Persistence.csproj" />
+  </Folder>
+  <Folder Name="/src/Shared/">
+    <Project Path="src/Shared/Acme.SharedKernel/Acme.SharedKernel.csproj" />
+  </Folder>
+  <Folder Name="/src/Storage/">
+    <Project Path="src/Storage/Acme.Storage/Acme.Storage.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Architecture/Acme.Architecture.Tests/Acme.Architecture.Tests.csproj" />
+    <Project Path="tests/DocumentManagement/Acme.DocumentManagement.Domain.Tests/Acme.DocumentManagement.Domain.Tests.csproj" />
+    <Project Path="tests/DocumentManagement/Acme.DocumentManagement.Persistence.Tests/Acme.DocumentManagement.Persistence.Tests.csproj" />
+    <Project Path="tests/Host/Acme.Api.Tests/Acme.Api.Tests.csproj" />
+    <Project Path="tests/Platform/Acme.Platform.Application.Tests/Acme.Platform.Application.Tests.csproj" />
+    <Project Path="tests/Platform/Acme.Platform.Domain.Tests/Acme.Platform.Domain.Tests.csproj" />
+    <Project Path="tests/TestSupport/Acme.TestSupport/Acme.TestSupport.csproj" />
+  </Folder>
+</Solution>

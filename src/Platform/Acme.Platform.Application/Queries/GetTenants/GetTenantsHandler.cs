@@ -1,0 +1,35 @@
+using Microsoft.EntityFrameworkCore;
+
+using Acme.Persistence;
+
+namespace Acme.Platform.Application.Queries.GetTenants;
+
+/// <summary>
+/// The whole tenant directory, straight from the database (ADR-016). The
+/// Tenants table carries no query filter — it is the one global directory
+/// (ADR-031) — so no bypass appears here; what makes this a platform-only
+/// view is the endpoint's PlatformAdministrator policy, not the query.
+/// </summary>
+public sealed class GetTenantsHandler
+{
+    private readonly AcmeDbContext _dbContext;
+
+    public GetTenantsHandler(AcmeDbContext dbContext)
+    {
+        _dbContext = dbContext;
+    }
+
+    public async Task<IReadOnlyList<TenantListItem>> HandleAsync(
+        CancellationToken cancellationToken)
+    {
+        return await _dbContext.Tenants
+            .AsNoTracking()
+            .OrderBy(x => x.Name)
+            .ThenBy(x => x.Id)
+            .Select(x => new TenantListItem(
+                x.Id.Value,
+                x.Name,
+                x.Status))
+            .ToListAsync(cancellationToken);
+    }
+}

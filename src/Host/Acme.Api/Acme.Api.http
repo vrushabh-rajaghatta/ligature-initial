@@ -1,0 +1,28 @@
+@Acme.Api_HostAddress = http://localhost:5225
+
+### Documents
+GET {{Acme.Api_HostAddress}}/api/documents
+Accept: application/json
+
+###
+GET {{Acme.Api_HostAddress}}/api/documents/00000000-0000-0000-0000-000000000000
+Accept: application/json
+
+###
+POST {{Acme.Api_HostAddress}}/api/documents/00000000-0000-0000-0000-000000000000/activate
+
+###
+POST {{Acme.Api_HostAddress}}/api/documents/00000000-0000-0000-0000-000000000000/archive
+
+### Authentication
+POST {{Acme.Api_HostAddress}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "user@example.com",
+  "password": "password"
+}
+
+###
+GET {{Acme.Api_HostAddress}}/api/auth/me
+Accept: application/json

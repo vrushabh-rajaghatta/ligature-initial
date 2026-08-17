@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "0zZWQnY1Xk8=",
+  "success": true,
+  "projectFilePath": "/Users/vrushabhrajaghatta/Documents/code/startup-codebase/src/Storage/Acme.Storage/Acme.Storage.csproj",
+  "expectedPackageFiles": [
+    "/Users/vrushabhrajaghatta/.nuget/packages/microsoft.extensions.dependencyinjection.abstractions/10.0.9/microsoft.extensions.dependencyinjection.abstractions.10.0.9.nupkg.sha512"
+  ],
+  "logs": []
+}

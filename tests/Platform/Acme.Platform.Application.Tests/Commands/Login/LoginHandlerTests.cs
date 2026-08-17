@@ -1,0 +1,306 @@
+using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+
+using Acme.SharedKernel.Primitives;
+using Acme.Persistence;
+using Acme.Platform.Application.Authentication;
+using Acme.Platform.Application.Commands.Login;
+using Acme.Platform.Application.Commands.SetUserPassword;
+using Acme.Platform.Domain.Aggregates.User;
+using Acme.Platform.Domain.ValueObjects;
+
+using TenantAggregate = Acme.Platform.Domain.Aggregates.Tenant.Tenant;
+using Acme.Platform.Infrastructure.Authentication;
+using Acme.Platform.Infrastructure.Repositories;
+using Acme.Platform.Infrastructure.Services;
+using Acme.SharedKernel.Exceptions;
+
+using UserAggregate = Acme.Platform.Domain.Aggregates.User.User;
+
+namespace Acme.Platform.Application.Tests.Commands.Login;
+
+/// <summary>
+/// Integration, against real Postgres and the real hasher and token issuer.
+/// Sign-in is composition, so faking any part of it would test the fake.
+/// </summary>
+[Collection(PlatformDatabase.Collection)]
+public sealed class LoginHandlerTests : IAsyncLifetime
+{
+    private readonly PlatformDatabase _database;
+
+    public LoginHandlerTests(PlatformDatabase database)
+    {
+        _database = database;
+    }
+
+
+    private const string CorrectPassword = "correct horse battery";
+
+    private readonly TenantId _tenantId =
+        TenantId.From(Guid.NewGuid());
+
+    private readonly string _email =
+        $"login.{Guid.NewGuid():N}@policy.example";
+
+    private UserAggregate _user = default!;
+
+    private AcmeDbContext NewContext() =>
+        new(_database.Options);
+
+    private static JwtAccessTokenIssuer NewIssuer() =>
+        new(Options.Create(new JwtOptions
+        {
+            SigningKey = "test-only-signing-key-at-least-32-bytes-long!",
+            Issuer = "acme-tests",
+            Audience = "acme-tests",
+            AccessTokenMinutes = 15
+        }));
+
+    private static SessionFactory NewSessionFactory() =>
+        new(NewIssuer(), NewRefreshTokenIssuer());
+
+    private static RefreshTokenIssuer NewRefreshTokenIssuer() =>
+        new(new SecretTokenFactory(),
+            Options.Create(new RefreshTokenOptions { Days = 14 }));
+
+    private static LoginHandler NewHandler(AcmeDbContext context) =>
+        new(NewSessionFactory(),
+            new PasswordHasher(),
+            new RefreshTokenRepository(context),
+            new SessionRepository(context),
+            new UserCredentialRepository(context),
+            new UserRepository(context),
+            new TenantRepository(context));
+
+    public async Task InitializeAsync()
+    {
+        await using var context = NewContext();
+
+        // The tenant must genuinely exist: sign-in now checks its status, and
+        // a user pointing at no tenant is rejected as misprovisioned.
+        context.Tenants.Add(
+            TenantAggregate.Create(_tenantId, "Login Test Tenant"));
+
+        _user = UserAggregate.CreateForTenant(
+            _tenantId, Email.Create(_email), "Login", "User");
+
+        _user.Activate();
+
+        context.Users.Add(_user);
+        await context.SaveChangesAsync();
+
+        await new SetUserPasswordHandler(
+                new PasswordHasher(),
+                new UserCredentialRepository(context),
+                new UserRepository(context))
+            .HandleAsync(
+                new SetUserPasswordCommand(_user.Id, CorrectPassword),
+                CancellationToken.None);
+    }
+
+    public async Task DisposeAsync()
+    {
+        await using var context = NewContext();
+
+        // Users only: credentials cascade (ADR-026). This fixture once leaked
+        // four orphaned credentials because it deleted users by organization
+        // and credentials one at a time; that is now impossible to get wrong.
+        await context.Database.ExecuteSqlRawAsync(
+            "DELETE FROM \"Users\" WHERE \"TenantId\" = {0}",
+            _tenantId.Value);
+
+        await context.Database.ExecuteSqlRawAsync(
+            "DELETE FROM \"Tenants\" WHERE \"Id\" = {0}",
+            _tenantId.Value);
+    }
+
+    [Fact]
+    public async Task Rejects_a_user_whose_tenant_is_retired()
+    {
+        // "No one signs in" is the deactivated tenant's contract
+        // (Tenant.Deactivate); sign-in is where it is enforced, with the same
+        // message as every other rejection (ADR-022).
+        await using (var context = NewContext())
+        {
+            var tenant = await context.Tenants.SingleAsync(
+                x => x.Id == _tenantId);
+            tenant.Deactivate();
+            await context.SaveChangesAsync();
+        }
+
+        try
+        {
+            await ShouldFailAsync(_email, CorrectPassword);
+        }
+        finally
+        {
+            await using var context = NewContext();
+            var tenant = await context.Tenants.SingleAsync(
+                x => x.Id == _tenantId);
+            tenant.Activate();
+            await context.SaveChangesAsync();
+        }
+    }
+
+    private async Task<AuthenticatedSession> LoginAsync(string email, string password)
+    {
+        await using var context = NewContext();
+
+        return await NewHandler(context).HandleAsync(
+            new LoginCommand(email, password),
+            CancellationToken.None);
+    }
+
+    private async Task ShouldFailAsync(string email, string password)
+    {
+        var act = () => LoginAsync(email, password);
+
+        // Every failure is indistinguishable: same type, same message. That is
+        // the whole point of ADR-022.
+        (await act.Should().ThrowAsync<AuthenticationFailedException>())
+            .WithMessage(AuthenticationErrors.InvalidCredentials);
+    }
+
+    [Fact]
+    public async Task Issues_a_token_for_valid_credentials()
+    {
+        var result = await LoginAsync(_email, CorrectPassword);
+
+        result.AccessToken.Should().NotBeNullOrWhiteSpace();
+    }
+
+    [Fact]
+    public async Task Issues_a_token_that_expires_in_the_future()
+    {
+        var result = await LoginAsync(_email, CorrectPassword);
+
+        result.AccessTokenExpiresAt.Should().BeAfter(DateTime.UtcNow);
+    }
+
+    [Fact]
+    public async Task Accepts_an_email_in_any_casing()
+    {
+        // Email normalizes, so sign-in must not be case sensitive.
+        var result = await LoginAsync(_email.ToUpperInvariant(), CorrectPassword);
+
+        result.AccessToken.Should().NotBeNullOrWhiteSpace();
+    }
+
+    [Fact]
+    public Task Rejects_a_wrong_password() =>
+        ShouldFailAsync(_email, "not the password");
+
+    [Fact]
+    public Task Rejects_an_unknown_email() =>
+        ShouldFailAsync($"absent.{Guid.NewGuid():N}@policy.example", CorrectPassword);
+
+    [Fact]
+    public Task Rejects_a_malformed_email() =>
+        ShouldFailAsync("not-an-email", CorrectPassword);
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public Task Rejects_an_empty_password(string password) =>
+        ShouldFailAsync(_email, password);
+
+    [Fact]
+    public async Task Rejects_a_user_who_has_no_credential()
+    {
+        await using var context = NewContext();
+
+        var withoutCredential = UserAggregate.CreateForTenant(
+            _tenantId,
+            Email.Create($"nocred.{Guid.NewGuid():N}@policy.example"),
+            "No",
+            "Credential");
+
+        withoutCredential.Activate();
+
+        context.Users.Add(withoutCredential);
+        await context.SaveChangesAsync();
+
+        await ShouldFailAsync(withoutCredential.Email.Value, CorrectPassword);
+    }
+
+    [Fact]
+    public async Task Rejects_a_deactivated_user_who_knows_the_password()
+    {
+        await using (var context = NewContext())
+        {
+            // IgnoreQueryFilters: this bare test context carries no tenant,
+            // and the row is being reloaded by an id the test owns.
+            var user = await context.Users
+                .IgnoreQueryFilters()
+                .SingleAsync(x => x.Id == _user.Id);
+            user.Deactivate();
+            await context.SaveChangesAsync();
+        }
+
+        // Knowing the password is not enough: an account that has been
+        // deactivated must not be able to sign in.
+        await ShouldFailAsync(_email, CorrectPassword);
+    }
+
+    [Fact]
+    public async Task Rejects_an_invited_user_who_has_not_been_activated()
+    {
+        await using var context = NewContext();
+
+        var invited = UserAggregate.CreateForTenant(
+            _tenantId,
+            Email.Create($"invited.{Guid.NewGuid():N}@policy.example"),
+            "Invited",
+            "User");
+
+        context.Users.Add(invited);
+        await context.SaveChangesAsync();
+
+        await new SetUserPasswordHandler(
+                new PasswordHasher(),
+                new UserCredentialRepository(context),
+                new UserRepository(context))
+            .HandleAsync(
+                new SetUserPasswordCommand(invited.Id, CorrectPassword),
+                CancellationToken.None);
+
+        invited.Status.Should().Be(UserStatus.Invited);
+
+        await ShouldFailAsync(invited.Email.Value, CorrectPassword);
+    }
+
+    [Fact]
+    public async Task Issues_a_distinct_token_each_time()
+    {
+        // The jti claim differs per token, so two sign-ins are distinguishable
+        // once revocation exists.
+        var first = await LoginAsync(_email, CorrectPassword);
+        var second = await LoginAsync(_email, CorrectPassword);
+
+        second.AccessToken.Should().NotBe(first.AccessToken);
+    }
+
+    [Fact]
+    public async Task Does_not_change_the_stored_hash_on_a_normal_login()
+    {
+        var before = await StoredHashAsync();
+
+        await LoginAsync(_email, CorrectPassword);
+
+        // Rehashing happens only when the hasher asks for it, not on every
+        // sign-in.
+        (await StoredHashAsync()).Should().Be(before);
+    }
+
+    private async Task<string> StoredHashAsync()
+    {
+        await using var context = NewContext();
+
+        var credential = await context.UserCredentials
+            .AsNoTracking()
+            .SingleAsync(x => x.Id == _user.Id);
+
+        return credential.PasswordHash;
+    }
+}
