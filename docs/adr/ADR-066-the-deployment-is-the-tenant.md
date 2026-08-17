@@ -76,6 +76,14 @@ the only scope there is. `User.TenantId` and both tenant-aware factories
 deployment that is switched off, which is a stronger statement than a status
 column and needs no code to enforce.
 
+**ADR-024's pattern outlives its subject, and code still cites it.** That ADR
+said tenancy must be *proven* by a signed claim rather than *asserted* in a
+request; the tenancy half is superseded here, but the same rule still governs
+identity — `ChangePasswordCommand` and `RevokeSessionCommand` deliberately
+carry no `UserId`, because the way to guarantee a caller acts only on
+themselves is to leave them no way to name anyone else. Those citations are
+correct and stay.
+
 **5. Two roles, and the first administrator arrives by invitation.**
 `UserRole.PlatformAdministrator` is removed — it named a person who operates
 Acme across tenants, and there is no across. `TenantAdministrator` is renamed

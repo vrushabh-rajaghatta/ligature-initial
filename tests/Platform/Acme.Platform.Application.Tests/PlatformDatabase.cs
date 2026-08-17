@@ -47,15 +47,20 @@ public sealed class PlatformDatabaseCollection : ICollectionFixture<PlatformData
 /// </remarks>
 public static class UserTables
 {
-    public static async Task ClearAsync(Acme.Persistence.AcmeDbContext context)
-    {
-        foreach (var table in new[]
-                 {
-                     "RefreshTokens", "Sessions", "UserCredentials",
-                     "Invitations", "PasswordResets", "Users"
-                 })
-        {
-            await context.Database.ExecuteSqlRawAsync($"DELETE FROM \"{table}\"");
-        }
-    }
+    /// <remarks>
+    /// One literal statement rather than a loop interpolating table names:
+    /// interpolation into <c>ExecuteSqlRawAsync</c> raises EF1002, and the
+    /// build runs warning-free. Children precede parents so the foreign keys
+    /// hold at every step.
+    /// </remarks>
+    public static Task ClearAsync(Acme.Persistence.AcmeDbContext context)
+        => context.Database.ExecuteSqlRawAsync(
+            """
+            DELETE FROM "RefreshTokens";
+            DELETE FROM "Sessions";
+            DELETE FROM "UserCredentials";
+            DELETE FROM "Invitations";
+            DELETE FROM "PasswordResets";
+            DELETE FROM "Users";
+            """);
 }

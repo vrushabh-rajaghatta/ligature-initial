@@ -224,7 +224,7 @@ justifies the rule does not reach them. See
 [ADR-043](adr/ADR-043-entity-identity-derives-from-the-kernel.md).
 
 The carve-out is **not** "the ReferenceData context". `RegulatoryTemplate` is an
-aggregate root that owns its versions and is tenant-scoped — the metadata engine
+aggregate root that owns its versions — the metadata engine
 this product is built on. It and the rest of Blueprint migrate like anything
 else.
 

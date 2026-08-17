@@ -13,12 +13,12 @@ namespace Acme.Platform.Contracts;
 /// not permissions.
 /// <para>
 /// <b>It is not in the shared kernel, and the distinction matters.</b>
-/// <c>TenantId</c> is there because ADR-030 argued the tenant had stopped being
-/// one context's concept — every aggregate in Acme is tenant-scoped. A user is
-/// not an intrinsic property of every domain concept; it is the identity of an
-/// aggregate that still belongs to Platform. ADR-017 rule 2 says the kernel must
-/// know no bounded context, so ownership stays here and only the contract
-/// crosses.
+/// A user is not an intrinsic property of every domain concept; it is the
+/// identity of an aggregate that belongs to Platform. ADR-017 rule 2 says the
+/// kernel must know no bounded context, so ownership stays here and only the
+/// contract crosses. (<c>TenantId</c> was the one concrete id the kernel did
+/// own, on ADR-030's argument that every aggregate was tenant-scoped; ADR-066
+/// removed it, and the kernel is now abstractions only.)
 /// </para>
 /// <para>
 /// Holding this id never licenses navigating to a <c>User</c> (ES-014). A name
