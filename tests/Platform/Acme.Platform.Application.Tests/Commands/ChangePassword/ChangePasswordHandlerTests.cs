@@ -2,7 +2,6 @@ using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
-using Acme.SharedKernel.Primitives;
 using Acme.Persistence;
 using Acme.Platform.Application.Authentication;
 using Acme.Platform.Application.Commands.ChangePassword;
@@ -49,9 +48,6 @@ public sealed class ChangePasswordHandlerTests : IAsyncLifetime
     private const string OriginalPassword = "the original password";
     private const string NewPassword = "a brand new password";
 
-    private readonly TenantId _tenantId =
-        TenantId.From(Guid.NewGuid());
-
     private readonly string _email =
         $"changepassword.{Guid.NewGuid():N}@policy.example";
 
@@ -64,8 +60,7 @@ public sealed class ChangePasswordHandlerTests : IAsyncLifetime
     {
         await using var context = NewContext();
 
-        _user = UserAggregate.CreateForTenant(
-            _tenantId, Email.Create(_email), "Change", "Password");
+        _user = UserAggregate.Create(Email.Create(_email), "Change", "Password");
 
         _user.Activate();
 
@@ -83,8 +78,7 @@ public sealed class ChangePasswordHandlerTests : IAsyncLifetime
         await using var context = NewContext();
 
         await context.Database.ExecuteSqlRawAsync(
-            "DELETE FROM \"Users\" WHERE \"TenantId\" = {0}",
-            _tenantId.Value);
+            "DELETE FROM \"Users\" WHERE \"Email\" LIKE '%@test.example'");
     }
 
     private static SetUserPasswordHandler NewSetPassword(AcmeDbContext context) =>
@@ -100,7 +94,7 @@ public sealed class ChangePasswordHandlerTests : IAsyncLifetime
                     new SessionRepository(context)),
                 new PasswordResetRepository(context)),
             new FakeCurrentUser(
-                _user.Id, _tenantId, Email.Create(_email)),
+                _user.Id, Email.Create(_email)),
             new PasswordHasher(),
             new UserCredentialRepository(context),
             new UserRepository(context));

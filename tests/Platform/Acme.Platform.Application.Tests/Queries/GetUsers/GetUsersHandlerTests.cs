@@ -1,7 +1,6 @@
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 
-using Acme.SharedKernel.Primitives;
 using Acme.Persistence;
 using Acme.Platform.Application.Queries.GetUsers;
 using Acme.Platform.Domain.Aggregates.User;
@@ -26,30 +25,25 @@ public sealed class GetUsersHandlerTests : IAsyncLifetime
         _database = database;
     }
 
-
-    private readonly TenantId _tenantId =
-        TenantId.From(Guid.NewGuid());
-
     private DbContextOptions<AcmeDbContext> Options() =>
         _database.Options;
 
     // The context carries the same tenant the handler is scoped to, so the
     // global query filter (ADR-031) resolves to this test's rows.
     private AcmeDbContext NewContext() =>
-        new(Options(), new FakeTenantContext(_tenantId));
+        new(Options());
 
     public async Task InitializeAsync()
     {
         await using var context = NewContext();
 
-        var ada = UserAggregate.CreateForTenant(
-            _tenantId, Email.Create("ada.lovelace@test.example"), "Ada", "Lovelace");
+        await UserTables.ClearAsync(context);
 
-        var grace = UserAggregate.CreateForTenant(
-            _tenantId, Email.Create("grace.hopper@test.example"), "Grace", "Hopper");
+        var ada = UserAggregate.Create(Email.Create("ada.lovelace@test.example"), "Ada", "Lovelace");
 
-        var alan = UserAggregate.CreateForTenant(
-            _tenantId, Email.Create("alan.turing@test.example"), "Alan", "Turing");
+        var grace = UserAggregate.Create(Email.Create("grace.hopper@test.example"), "Grace", "Hopper");
+
+        var alan = UserAggregate.Create(Email.Create("alan.turing@test.example"), "Alan", "Turing");
 
         alan.Activate();
 
@@ -62,23 +56,15 @@ public sealed class GetUsersHandlerTests : IAsyncLifetime
     {
         await using var context = NewContext();
 
-        await context.Database.ExecuteSqlRawAsync(
-            "DELETE FROM \"Users\" WHERE \"TenantId\" = {0}",
-            _tenantId.Value);
+        await UserTables.ClearAsync(context);
     }
-
-    /// <summary>
-    /// The tenant is supplied to the handler, never to the query - there is no
-    /// longer any way for a query to widen its own scope.
-    /// </summary>
     private async Task<Common.PagedResult<UserListItem>> QueryAsync(
-        GetUsersQuery query,
-        TenantId? tenant = null)
+        GetUsersQuery query)
     {
         await using var context = NewContext();
 
         return await new GetUsersHandler(
-                context, new FakeTenantContext(tenant ?? _tenantId))
+                context)
             .HandleAsync(query, CancellationToken.None);
     }
 
@@ -194,13 +180,4 @@ public sealed class GetUsersHandlerTests : IAsyncLifetime
         result.Page.Should().Be(1);
     }
 
-    [Fact]
-    public async Task Scopes_results_to_the_callers_tenant()
-    {
-        var other = await QueryAsync(
-            new GetUsersQuery(), tenant: TenantId.From(Guid.NewGuid()));
-
-        other.Items.Should().BeEmpty();
-        other.TotalCount.Should().Be(0);
-    }
 }

@@ -2,28 +2,18 @@ using FluentAssertions;
 
 using Acme.DocumentManagement.Domain.Aggregates.Documents;
 using Acme.SharedKernel.Exceptions;
-using Acme.SharedKernel.Primitives;
 
 namespace Acme.DocumentManagement.Domain.Tests;
 
 public class DocumentValidationTests
 {
-    [Fact]
-    public void Create_WithNullTenant_Throws()
-    {
-        var act = () => Document.Create(null!, "Label");
-
-        act.Should().Throw<DomainException>()
-            .WithMessage($"{DocumentErrors.TenantRequired}*");
-    }
-
     [Theory]
     [InlineData("")]
     [InlineData("   ")]
     [InlineData(null)]
     public void Create_WithBlankName_Throws(string? name)
     {
-        var act = () => Document.Create(TenantId.New(), name!);
+        var act = () => Document.Create(name!);
 
         act.Should().Throw<DomainException>()
             .WithMessage($"{DocumentErrors.DocumentNameRequired}*");
@@ -34,7 +24,7 @@ public class DocumentValidationTests
     {
         var name = new string('a', Document.NameMaxLength + 1);
 
-        var act = () => Document.Create(TenantId.New(), name);
+        var act = () => Document.Create(name);
 
         act.Should().Throw<DomainException>()
             .WithMessage($"{DocumentErrors.DocumentNameTooLong}*");

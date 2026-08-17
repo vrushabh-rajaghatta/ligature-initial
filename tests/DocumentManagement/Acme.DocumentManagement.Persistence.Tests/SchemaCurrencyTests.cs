@@ -67,14 +67,10 @@ public sealed class SchemaCurrencyTests
     /// database that migrates and does not seed would fail application-tier
     /// tests for a reason that has nothing to do with the code under test.
     /// </summary>
-    [Fact]
-    public async Task The_real_initializer_chain_ran_against_it()
-    {
-        await using var context = _database.NewContext();
-
-        // Tenants are seeded by the only initializer this codebase starts
-        // with; present means the chain ran. Unfiltered by design — the
-        // platform tier, not tenant-owned data.
-        (await context.Tenants.CountAsync()).Should().BeGreaterThan(0);
-    }
+    // A test asserting "the initializer chain ran" lived here, and proved it
+    // by counting seeded Tenants. ADR-066 deleted TenantInitializer — the only
+    // one this codebase had — so there is no seeded data left to observe.
+    // IDataInitializer and the loop that runs it are deliberately kept: the
+    // next seed reinstates a test here, and removing working machinery for
+    // want of a caller is the speculative deletion ADR-018 forbids.
 }

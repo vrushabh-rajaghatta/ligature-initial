@@ -1,7 +1,6 @@
 using Acme.Platform.Application.Services;
 using Acme.Platform.Domain.Aggregates.User;
 using Acme.Platform.Domain.ValueObjects;
-using Acme.SharedKernel.Primitives;
 using Acme.Platform.Contracts;
 
 namespace Acme.Platform.Application.Tests.Fakes;
@@ -19,12 +18,10 @@ public sealed class FakeCurrentUser : ICurrentUser
 {
     public FakeCurrentUser(
         UserId userId,
-        TenantId tenantId,
         Email email,
         UserRole role = UserRole.Member)
     {
         UserId = userId;
-        TenantId = tenantId;
         Email = email;
         Role = role;
     }
@@ -32,8 +29,6 @@ public sealed class FakeCurrentUser : ICurrentUser
     public bool IsAuthenticated => true;
 
     public UserId UserId { get; }
-
-    public TenantId TenantId { get; }
 
     public Email Email { get; }
 

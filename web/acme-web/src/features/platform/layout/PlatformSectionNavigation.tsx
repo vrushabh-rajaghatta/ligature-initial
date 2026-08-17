@@ -1,23 +1,12 @@
 import { NavLink } from "react-router-dom";
 
-import { useCurrentUser } from "@/features/auth/hooks/useCurrentUser";
-
 /**
- * Role-aware (ADR-033): a platform administrator manages tenants and has no
- * tenant of their own to manage users in; a tenant administrator manages users
- * and cannot see the tenant directory. The API enforces this with 403s —
- * hiding the links just keeps the UI from offering doors that will not open.
- *
- * Organizations are not here. They are regulatory parties (ADR-030, ADR-032),
- * and live under /regulatory beside Products and Registrations.
+ * One destination since ADR-066. This was role-aware while a platform
+ * administrator managed tenants and a tenant administrator managed users;
+ * a deployment now serves one customer, so only Users remains.
  */
 export function PlatformSectionNavigation() {
-  const { data: user } = useCurrentUser();
-
-  const items =
-    user?.role === "PlatformAdministrator"
-      ? [{ label: "Tenants", to: "/platform/tenants" }]
-      : [{ label: "Users", to: "/platform/users" }];
+  const items = [{ label: "Users", to: "/platform/users" }];
 
   return (
     <nav className="w-60 border-r p-3">

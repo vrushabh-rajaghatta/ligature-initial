@@ -1,6 +1,5 @@
 using FluentAssertions;
 
-using Acme.SharedKernel.Primitives;
 using Acme.Platform.Application.Commands.ActivateUser;
 using Acme.Platform.Application.Tests.Fakes;
 using Acme.Platform.Domain.Aggregates.User;
@@ -14,12 +13,9 @@ namespace Acme.Platform.Application.Tests.Commands.ActivateUser;
 
 public sealed class ActivateUserHandlerTests
 {
-    private static readonly TenantId Organization = TenantId.New();
 
     private static UserAggregate InvitedUser() =>
-        UserAggregate.CreateForTenant(
-            Organization,
-            Email.Create("john.doe@example.com"),
+        UserAggregate.Create(Email.Create("john.doe@example.com"),
             "John",
             "Doe");
 
@@ -47,7 +43,7 @@ public sealed class ActivateUserHandlerTests
         var user = InvitedUser();
         var repository = new FakeUserRepository(user);
         var handler = new ActivateUserHandler(
-            repository, new FakeTenantContext(Organization));
+            repository);
 
         var act = () => handler.HandleAsync(
             new ActivateUserCommand(user.Id), CancellationToken.None);
@@ -68,7 +64,7 @@ public sealed class ActivateUserHandlerTests
         user.Activate();
         var repository = new FakeUserRepository(user);
         var handler = new ActivateUserHandler(
-            repository, new FakeTenantContext(Organization));
+            repository);
 
         var act = () => handler.HandleAsync(
             new ActivateUserCommand(user.Id), CancellationToken.None);
@@ -83,7 +79,7 @@ public sealed class ActivateUserHandlerTests
         var user = DeactivatedUser();
         var repository = new FakeUserRepository(user);
         var handler = new ActivateUserHandler(
-            repository, new FakeTenantContext(Organization));
+            repository);
 
         await handler.HandleAsync(
             new ActivateUserCommand(user.Id), CancellationToken.None);
@@ -97,7 +93,7 @@ public sealed class ActivateUserHandlerTests
         var user = DeactivatedUser();
         var repository = new FakeUserRepository(user);
         var handler = new ActivateUserHandler(
-            repository, new FakeTenantContext(Organization));
+            repository);
 
         await handler.HandleAsync(
             new ActivateUserCommand(user.Id), CancellationToken.None);
@@ -112,7 +108,7 @@ public sealed class ActivateUserHandlerTests
     {
         var repository = new FakeUserRepository();
         var handler = new ActivateUserHandler(
-            repository, new FakeTenantContext(Organization));
+            repository);
 
         var act = () => handler.HandleAsync(
             new ActivateUserCommand(UserId.New()), CancellationToken.None);
@@ -121,20 +117,4 @@ public sealed class ActivateUserHandlerTests
         repository.Updated.Should().BeNull();
     }
 
-    [Fact]
-    public async Task Throws_not_found_when_the_user_belongs_to_another_organization()
-    {
-        var user = DeactivatedUser();
-        var repository = new FakeUserRepository(user);
-        // The caller's tenant is a different organization, so the user must be
-        // invisible. The command cannot express a tenant at all any more.
-        var handler = new ActivateUserHandler(
-            repository, new FakeTenantContext(TenantId.New()));
-
-        var act = () => handler.HandleAsync(
-            new ActivateUserCommand(user.Id), CancellationToken.None);
-
-        await act.Should().ThrowAsync<NotFoundException>();
-        repository.Updated.Should().BeNull();
-    }
 }

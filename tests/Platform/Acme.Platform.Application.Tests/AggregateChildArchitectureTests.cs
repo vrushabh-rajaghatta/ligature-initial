@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 
 using Acme.Persistence;
 
-namespace Acme.Platform.Application.Tests.Tenancy;
+namespace Acme.Platform.Application.Tests;
 
 /// <summary>
 /// Architecture tests over the EF model itself, for two traps that have each
@@ -14,7 +14,7 @@ namespace Acme.Platform.Application.Tests.Tenancy;
 /// value object cannot be bound to a constructor parameter</b>.
 /// </summary>
 /// <remarks>
-/// These live beside <see cref="TenantFilterArchitectureTests"/> rather than in
+/// These live here rather than in
 /// <c>tests/Architecture/</c> because those tests deliberately reference no
 /// production project — they read source text, so a convention reaches a
 /// context they have never heard of. These need the built model, and the model

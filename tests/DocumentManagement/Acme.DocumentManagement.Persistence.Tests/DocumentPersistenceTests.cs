@@ -3,8 +3,6 @@ using Microsoft.EntityFrameworkCore;
 
 using Acme.DocumentManagement.Domain.Aggregates.Documents;
 using Acme.DocumentManagement.Infrastructure.Repositories;
-using Acme.SharedKernel.Abstractions;
-using Acme.SharedKernel.Primitives;
 
 namespace Acme.DocumentManagement.Persistence.Tests;
 
@@ -23,20 +21,8 @@ public class DocumentPersistenceTests
         _database = database;
     }
 
-    // The first seeded demo tenant. Every context is scoped to it so the
-    // global query filter (ADR-031) shows the document created here.
-    private static readonly TenantId TestTenant =
-        new(Guid.Parse("30000000-0000-0000-0000-000000000001"));
-
-    private sealed class FixedTenantContext : ITenantContext
-    {
-        public TenantId TenantId => TestTenant;
-
-        public TenantId? TenantIdOrNull => TestTenant;
-    }
-
     private Acme.Persistence.AcmeDbContext NewContext() =>
-        _database.NewContext(new FixedTenantContext());
+        _database.NewContext();
 
     [Fact]
     public async Task Saves_reloads_and_cascade_deletes_a_document_with_its_version()
@@ -47,7 +33,6 @@ public class DocumentPersistenceTests
         await using (var ctx = NewContext())
         {
             var document = Document.Create(
-                TestTenant,
                 "Persistence Verify " + Guid.NewGuid());
 
             document.AddInitialVersion(
@@ -71,7 +56,6 @@ public class DocumentPersistenceTests
             var reloaded = await repository.GetByIdAsync(documentId, default);
 
             reloaded.Should().NotBeNull();
-            reloaded!.TenantId.Should().Be(TestTenant);
             reloaded.Status.Should().Be(DocumentStatus.Draft);
 
             reloaded.Versions.Should().ContainSingle();
@@ -106,50 +90,5 @@ public class DocumentPersistenceTests
                     EF.Property<DocumentId>(v, "DocumentId") == documentId);
             orphanVersionCount.Should().Be(0);
         }
-    }
-
-    [Fact]
-    public async Task A_document_is_invisible_to_another_tenant()
-    {
-        DocumentId documentId;
-
-        await using (var ctx = NewContext())
-        {
-            var document = Document.Create(
-                TestTenant,
-                "Isolation Verify " + Guid.NewGuid());
-
-            var repository = new DocumentRepository(ctx);
-            await repository.AddAsync(document, default);
-            documentId = document.Id;
-        }
-
-        // The same read, as the second seeded tenant: the fail-closed filter
-        // (ADR-031) must resolve to no rows, not to an error.
-        var otherTenant = new TenantId(
-            Guid.Parse("30000000-0000-0000-0000-000000000002"));
-
-        await using (var ctx = _database.NewContext(
-            new StubTenantContext(otherTenant)))
-        {
-            var visible = await ctx.Documents
-                .AnyAsync(x => x.Id == documentId);
-
-            visible.Should().BeFalse();
-        }
-    }
-
-    private sealed class StubTenantContext : ITenantContext
-    {
-        private readonly TenantId _tenantId;
-
-        public StubTenantContext(TenantId tenantId)
-        {
-            _tenantId = tenantId;
-        }
-
-        public TenantId TenantId => _tenantId;
-
-        public TenantId? TenantIdOrNull => _tenantId;
     }
 }

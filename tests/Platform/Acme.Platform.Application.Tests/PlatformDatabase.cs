@@ -1,3 +1,5 @@
+using Microsoft.EntityFrameworkCore;
+
 using Acme.TestSupport;
 
 namespace Acme.Platform.Application.Tests;
@@ -28,3 +30,32 @@ public sealed class PlatformDatabase : AcmeTestDatabase
 /// </remarks>
 [CollectionDefinition(PlatformDatabase.Collection)]
 public sealed class PlatformDatabaseCollection : ICollectionFixture<PlatformDatabase>;
+
+/// <summary>
+/// Empties every person-scoped table, children first.
+/// </summary>
+/// <remarks>
+/// The directory queries used to scope themselves by <c>TenantId</c>, which
+/// isolated each test class's rows from every other class sharing this
+/// assembly's database (ADR-064 §2). ADR-066 removed the column, so a class
+/// that asserts on a total count has to own the table outright instead.
+/// <para>
+/// Safe because every database-touching class here is in one xUnit collection
+/// and therefore runs serially — a class has the database to itself between
+/// its own <c>InitializeAsync</c> and <c>DisposeAsync</c>.
+/// </para>
+/// </remarks>
+public static class UserTables
+{
+    public static async Task ClearAsync(Acme.Persistence.AcmeDbContext context)
+    {
+        foreach (var table in new[]
+                 {
+                     "RefreshTokens", "Sessions", "UserCredentials",
+                     "Invitations", "PasswordResets", "Users"
+                 })
+        {
+            await context.Database.ExecuteSqlRawAsync($"DELETE FROM \"{table}\"");
+        }
+    }
+}

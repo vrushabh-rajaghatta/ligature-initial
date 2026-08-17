@@ -1,7 +1,6 @@
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 
-using Acme.SharedKernel.Primitives;
 using Acme.Persistence;
 using Acme.Platform.Application.Queries.GetUserById;
 using Acme.Platform.Domain.Aggregates.User;
@@ -27,12 +26,6 @@ public sealed class GetUserByIdHandlerTests : IAsyncLifetime
     }
 
 
-    private readonly TenantId _tenantId =
-        TenantId.From(Guid.NewGuid());
-
-    private readonly TenantId _otherTenantId =
-        TenantId.From(Guid.NewGuid());
-
     private UserId _userId = default!;
 
     private DbContextOptions<AcmeDbContext> Options() =>
@@ -41,15 +34,15 @@ public sealed class GetUserByIdHandlerTests : IAsyncLifetime
     // The context carries the same tenant the handler is scoped to, so the
     // global query filter (ADR-031) resolves to this test's rows.
     private AcmeDbContext NewContext() =>
-        new(Options(), new FakeTenantContext(_tenantId));
+        new(Options());
 
     public async Task InitializeAsync()
     {
         await using var context = NewContext();
 
-        var user = UserAggregate.CreateForTenant(
-            _tenantId,
-            Email.Create("grace.hopper@details.example"),
+        await UserTables.ClearAsync(context);
+
+        var user = UserAggregate.Create(Email.Create("grace.hopper@details.example"),
             "Grace",
             "Hopper");
 
@@ -64,19 +57,16 @@ public sealed class GetUserByIdHandlerTests : IAsyncLifetime
     {
         await using var context = NewContext();
 
-        await context.Database.ExecuteSqlRawAsync(
-            "DELETE FROM \"Users\" WHERE \"TenantId\" = {0}",
-            _tenantId.Value);
+        await UserTables.ClearAsync(context);
     }
 
     private async Task<UserDetails> QueryAsync(
-        GetUserByIdQuery query,
-        TenantId? tenant = null)
+        GetUserByIdQuery query)
     {
         await using var context = NewContext();
 
         return await new GetUserByIdHandler(
-                context, new FakeTenantContext(tenant ?? _tenantId))
+                context)
             .HandleAsync(query, CancellationToken.None);
     }
 
@@ -111,14 +101,4 @@ public sealed class GetUserByIdHandlerTests : IAsyncLifetime
         await act.Should().ThrowAsync<NotFoundException>();
     }
 
-    [Fact]
-    public async Task Throws_not_found_when_the_user_belongs_to_another_organization()
-    {
-        // Tenant isolation: an existing user outside the caller's organization
-        // must be indistinguishable from one that does not exist.
-        var act = () => QueryAsync(
-            new GetUserByIdQuery(_userId), tenant: _otherTenantId);
-
-        await act.Should().ThrowAsync<NotFoundException>();
-    }
 }
