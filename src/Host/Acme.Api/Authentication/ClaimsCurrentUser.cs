@@ -7,7 +7,6 @@ using Acme.Platform.Domain.Aggregates.User;
 using Acme.Platform.Domain.ValueObjects;
 using Acme.Platform.Infrastructure.Authentication;
 using Acme.SharedKernel.Exceptions;
-using Acme.SharedKernel.Primitives;
 using Acme.Platform.Contracts;
 
 namespace Acme.Api.Authentication;
@@ -17,8 +16,8 @@ namespace Acme.Api.Authentication;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Lives in the Host, like <see cref="Tenancy.ClaimsTenantContext"/>, because
-/// it is an adapter from HTTP to an abstraction the application layer defines.
+/// Lives in the Host because it is an adapter from HTTP to an abstraction the
+/// application layer defines.
 /// Platform.Application knows there is a current user; only the Host knows one
 /// arrives as a bearer token.
 /// </para>
@@ -46,9 +45,6 @@ public sealed class ClaimsCurrentUser : ICurrentUser
 
     public UserId UserId =>
         new(RequiredGuid(JwtRegisteredClaimNames.Sub));
-
-    public TenantId TenantId =>
-        new(RequiredGuid(AcmeClaims.TenantId));
 
     public Email Email =>
         Email.Create(Required(JwtRegisteredClaimNames.Email));

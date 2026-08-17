@@ -1,5 +1,4 @@
 using Acme.Platform.Application.Services;
-using Acme.SharedKernel.Abstractions;
 using Acme.Platform.Contracts;
 
 namespace Acme.Api.Endpoints.Authentication;
@@ -20,17 +19,12 @@ public static class GetCurrentUserEndpoint
         return app;
     }
 
-    // The first endpoint in Acme that requires authentication. No tenant
-    // header: identity and tenant both come from the token, which is the whole
-    // point of the slice. The tenant is read through the lenient
-    // ITenantContext accessor rather than ICurrentUser.TenantId, which throws
-    // for a platform user — whose /me legitimately has no tenant to report.
-    private static IResult Handle(
-        ICurrentUser currentUser,
-        ITenantContext tenantContext) =>
+    // Identity comes from the token and nowhere else. Reported a tenant
+    // alongside it until ADR-066; which customer this is, is now the
+    // deployment being asked.
+    private static IResult Handle(ICurrentUser currentUser) =>
         Results.Ok(new CurrentUserResponse(
             currentUser.UserId.Value,
-            tenantContext.TenantIdOrNull?.Value,
             currentUser.Email.Value,
             currentUser.Role.ToString()));
 }

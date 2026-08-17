@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 
 using Acme.Persistence;
-using Acme.SharedKernel.Abstractions;
 using Acme.SharedKernel.Exceptions;
 using Acme.Platform.Contracts;
 
@@ -15,14 +14,10 @@ namespace Acme.Platform.Application.Queries.GetUserById;
 public sealed class GetUserByIdHandler
 {
     private readonly AcmeDbContext _dbContext;
-    private readonly ITenantContext _tenantContext;
 
-    public GetUserByIdHandler(
-        AcmeDbContext dbContext,
-        ITenantContext tenantContext)
+    public GetUserByIdHandler(AcmeDbContext dbContext)
     {
         _dbContext = dbContext;
-        _tenantContext = tenantContext;
     }
 
     public async Task<UserDetails> HandleAsync(
@@ -30,14 +25,13 @@ public sealed class GetUserByIdHandler
         CancellationToken cancellationToken)
     {
         var userId = query.UserId.Value;
-        var tenantId = _tenantContext.TenantId.Value;
 
-        // Tenant isolation: a user in another tenant is indistinguishable
-        // from one that does not exist. Applied unconditionally - there is no
-        // longer a code path that reads across tenants.
+        // Carried a tenant predicate until ADR-066. Every user in this
+        // database belongs to this deployment, so the id alone identifies
+        // them.
         var user = await _dbContext.UserDirectory
             .AsNoTracking()
-            .Where(x => x.Id == userId && x.TenantId == tenantId)
+            .Where(x => x.Id == userId)
             .Select(x => new UserDetails(
                 x.Id,
                 x.FirstName,

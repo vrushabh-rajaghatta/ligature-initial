@@ -9,7 +9,6 @@ using Acme.Platform.Domain.Aggregates.Invitation;
 using Acme.Platform.Domain.Aggregates.PasswordReset;
 using Acme.Platform.Domain.Aggregates.RefreshToken;
 using Acme.Platform.Domain.Aggregates.Session;
-using Acme.Platform.Domain.Aggregates.Tenant;
 using Acme.Platform.Domain.Aggregates.User;
 using Acme.Platform.Domain.Aggregates.UserCredential;
 using Acme.Platform.Infrastructure.Repositories;
@@ -24,8 +23,6 @@ public static class DependencyInjection
         IConfiguration configuration)
     {
         services.AddScoped<IUserRepository, UserRepository>();
-
-        services.AddScoped<ITenantRepository, TenantRepository>();
 
         services.AddScoped<
             IUserCredentialRepository, UserCredentialRepository>();

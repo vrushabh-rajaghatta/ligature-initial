@@ -4,7 +4,6 @@ using Microsoft.EntityFrameworkCore;
 
 using Acme.DocumentManagement.Domain.Aggregates.Documents;
 using Acme.Persistence;
-using Acme.SharedKernel.Abstractions;
 using Acme.SharedKernel.Exceptions;
 using Acme.Storage;
 
@@ -15,18 +14,15 @@ public sealed class UploadDocumentHandler
     private readonly AcmeDbContext _dbContext;
     private readonly IDocumentRepository _repository;
     private readonly IFileStorage _fileStorage;
-    private readonly ITenantContext _tenantContext;
 
     public UploadDocumentHandler(
         AcmeDbContext dbContext,
         IDocumentRepository repository,
-        IFileStorage fileStorage,
-        ITenantContext tenantContext)
+        IFileStorage fileStorage)
     {
         _dbContext = dbContext;
         _repository = repository;
         _fileStorage = fileStorage;
-        _tenantContext = tenantContext;
     }
 
     public async Task<UploadDocumentResult> HandleAsync(
@@ -41,11 +37,7 @@ public sealed class UploadDocumentHandler
         if (bytes.LongLength == 0)
             throw new DomainException(DocumentUploadErrors.EmptyFile);
 
-        // The document belongs to the caller's tenant (ADR-031, ADR-024) —
-        // resolved from identity, never accepted from the request body.
-        var tenantId = _tenantContext.TenantId;
-
-        // Names are unique within the tenant. The unique index is the last
+        // Names are unique in this deployment. The unique index is the last
         // line of defence; this check is the one that produces a 409 the
         // caller can act on.
         var trimmedName = command.Name?.Trim() ?? string.Empty;
@@ -59,7 +51,7 @@ public sealed class UploadDocumentHandler
                 DocumentUploadErrors.DuplicateDocumentName);
 
         // Create the aggregate first so we have its id for the storage path.
-        var document = Document.Create(tenantId, command.Name!);
+        var document = Document.Create(command.Name!);
 
         // Deterministic stored filename + relative path mirroring ownership.
         // Original filename is preserved separately on the version.

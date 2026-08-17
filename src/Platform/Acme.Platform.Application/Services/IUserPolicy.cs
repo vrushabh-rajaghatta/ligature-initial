@@ -1,6 +1,5 @@
 using Acme.Platform.Domain.Aggregates.User;
 using Acme.Platform.Domain.ValueObjects;
-using Acme.SharedKernel.Primitives;
 using Acme.Platform.Contracts;
 
 namespace Acme.Platform.Application.Services;
@@ -13,15 +12,9 @@ namespace Acme.Platform.Application.Services;
 /// </summary>
 public interface IUserPolicy
 {
-    Task EnsureTenantCanAcceptUsersAsync(
-        TenantId tenantId,
-        CancellationToken cancellationToken);
-
     /// <summary>
-    /// An email address identifies exactly one user across Acme, so this rule
-    /// takes no organization (ADR-021). The parameter was removed rather than
-    /// ignored: authentication resolves a user before any tenant exists, and a
-    /// per-organization check could not answer it.
+    /// An email address identifies exactly one user in this deployment
+    /// (ADR-021, as narrowed by ADR-066).
     /// </summary>
     Task EnsureEmailIsUniqueAsync(
         Email email,

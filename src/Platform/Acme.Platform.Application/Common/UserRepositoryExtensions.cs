@@ -1,6 +1,5 @@
 using Acme.Platform.Domain.Aggregates.User;
 using Acme.SharedKernel.Exceptions;
-using Acme.SharedKernel.Primitives;
 
 using UserAggregate = Acme.Platform.Domain.Aggregates.User.User;
 using Acme.Platform.Contracts;
@@ -10,29 +9,22 @@ namespace Acme.Platform.Application.Common;
 internal static class UserRepositoryExtensions
 {
     /// <summary>
-    /// Loads a user that must exist and must belong to the caller's tenant.
-    /// Extracted once three commands needed the identical lookup (update
-    /// profile, activate, deactivate).
+    /// Loads a user that must exist. Extracted once three commands needed the
+    /// identical lookup (update profile, activate, deactivate).
     /// </summary>
     /// <remarks>
-    /// The tenant is non-nullable by design. It was optional while the
-    /// tenant travelled as a query-string parameter, which meant omitting it
-    /// silently disabled isolation; now the tenant is always known, so there is
-    /// no "unscoped" call to express. A user belonging to another tenant is
-    /// reported as not found rather than forbidden, so the API never reveals
-    /// that the record exists.
+    /// Took a <c>TenantId</c> until ADR-066 and rejected users belonging to
+    /// another tenant as not found. Every user in this database belongs to
+    /// this deployment, so the check has nothing left to compare — the
+    /// not-found path now only means the user does not exist.
     /// </remarks>
     public static async Task<UserAggregate> GetRequiredAsync(
         this IUserRepository repository,
         UserId userId,
-        TenantId tenantId,
         CancellationToken cancellationToken)
     {
         var user = await repository.GetByIdAsync(userId, cancellationToken);
 
-        if (user is null || user.TenantId != tenantId)
-            throw new NotFoundException(PlatformErrors.UserNotFound);
-
-        return user;
+        return user ?? throw new NotFoundException(PlatformErrors.UserNotFound);
     }
 }

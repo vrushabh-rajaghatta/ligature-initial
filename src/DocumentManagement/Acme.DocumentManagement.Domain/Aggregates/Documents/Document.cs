@@ -1,6 +1,5 @@
 using Acme.SharedKernel.Abstractions;
 using Acme.SharedKernel.Exceptions;
-using Acme.SharedKernel.Primitives;
 
 namespace Acme.DocumentManagement.Domain.Aggregates.Documents;
 
@@ -11,8 +10,8 @@ namespace Acme.DocumentManagement.Domain.Aggregates.Documents;
 /// The aggregate owns version numbering — a version number is never accepted
 /// from the outside. The stored bytes live behind <c>IFileStorage</c>; the
 /// aggregate records only the facts about them (name, size, checksum, path).
-/// Derived from RegOS's <c>ProductDocument</c>, decoupled from the product
-/// tier: a document is owned by the tenant directly.
+/// Carried a <c>TenantId</c> until ADR-066; the database a document is stored
+/// in now says whose it is.
 /// </remarks>
 public sealed class Document : AggregateRoot<DocumentId>
 {
@@ -23,10 +22,6 @@ public sealed class Document : AggregateRoot<DocumentId>
     private Document()
     {
     }
-
-    // The owning tenant (ADR-031). Held by value, assigned at creation from
-    // the authenticated caller, never from the request body.
-    public TenantId TenantId { get; private set; } = default!;
 
     public string Name { get; private set; } = default!;
 
@@ -41,11 +36,8 @@ public sealed class Document : AggregateRoot<DocumentId>
     public IReadOnlyCollection<DocumentVersion> Versions
         => _versions.AsReadOnly();
 
-    public static Document Create(TenantId tenantId, string name)
+    public static Document Create(string name)
     {
-        if (tenantId is null)
-            throw new DomainException(DocumentErrors.TenantRequired);
-
         if (string.IsNullOrWhiteSpace(name))
             throw new DomainException(DocumentErrors.DocumentNameRequired);
 
@@ -57,7 +49,6 @@ public sealed class Document : AggregateRoot<DocumentId>
         return new Document
         {
             Id = DocumentId.New(),
-            TenantId = tenantId,
             Name = trimmedName,
             Status = DocumentStatus.Draft,
             CurrentVersionId = null,

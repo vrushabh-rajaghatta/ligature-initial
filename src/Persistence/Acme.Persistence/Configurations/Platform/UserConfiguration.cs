@@ -3,7 +3,6 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 using Acme.Platform.Domain.Aggregates.User;
 using Acme.Platform.Domain.ValueObjects;
-using Acme.SharedKernel.Primitives;
 
 using UserAggregate = Acme.Platform.Domain.Aggregates.User.User;
 using Acme.Platform.Contracts;
@@ -22,16 +21,6 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<UserAggregate>
             .HasConversion(
                 id => id.Value,
                 value => new UserId(value));
-
-        // Nullable strongly-typed reference, like DocumentType.TenantId:
-        // null => platform user (ADR-030). Nullability is enforced by the
-        // factories, not here — CreateForTenant cannot produce null.
-        builder.Property(x => x.TenantId)
-            .HasConversion(
-                id => id != null ? id.Value : (Guid?)null,
-                value => value != null
-                    ? new TenantId(value.Value)
-                    : (TenantId?)null);
 
         // The Email value object is stored as its normalized string. Email.Create
         // re-runs (idempotent) normalization/validation on read; stored values are
@@ -62,13 +51,12 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<UserAggregate>
         builder.Property(x => x.CreatedOn)
             .IsRequired();
 
-        // Defense in depth for the uniqueness policy: an email address
-        // identifies exactly one user across Acme, not one per tenant
-        // (ADR-021). Authentication resolves a user before a tenant exists, so
-        // the index cannot be tenant-scoped.
+        // Defense in depth for the uniqueness policy. ADR-021 made an address
+        // identify exactly one user because authentication had to resolve a
+        // user before a tenant existed; ADR-066 removed the tenant, and the
+        // rule is now simply that an address identifies one user in this
+        // deployment — the only scope there is.
         builder.HasIndex(x => x.Email)
             .IsUnique();
-
-        builder.HasIndex(x => x.TenantId);
     }
 }

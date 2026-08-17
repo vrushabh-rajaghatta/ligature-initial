@@ -1,6 +1,5 @@
 using Acme.Platform.Application.Common;
 using Acme.Platform.Domain.Aggregates.User;
-using Acme.SharedKernel.Abstractions;
 using Acme.Platform.Contracts;
 
 namespace Acme.Platform.Application.Commands.DeactivateUser;
@@ -13,14 +12,11 @@ namespace Acme.Platform.Application.Commands.DeactivateUser;
 public sealed class DeactivateUserHandler
 {
     private readonly IUserRepository _repository;
-    private readonly ITenantContext _tenantContext;
 
     public DeactivateUserHandler(
-        IUserRepository repository,
-        ITenantContext tenantContext)
+        IUserRepository repository)
     {
         _repository = repository;
-        _tenantContext = tenantContext;
     }
 
     public async Task HandleAsync(
@@ -28,7 +24,7 @@ public sealed class DeactivateUserHandler
         CancellationToken cancellationToken)
     {
         var user = await _repository.GetRequiredAsync(
-            command.UserId, _tenantContext.TenantId, cancellationToken);
+            command.UserId, cancellationToken);
 
         user.Deactivate();
 

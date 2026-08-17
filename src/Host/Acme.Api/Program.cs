@@ -2,12 +2,11 @@ using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 using Acme.Api.Authentication;
 using Acme.Api.Development;
+using Acme.Api.Provisioning;
 using Acme.Api.Endpoints.Authentication;
 using Acme.Api.Endpoints.Documents;
 using Acme.Api.Endpoints.Platform;
-using Acme.Api.Endpoints.PlatformAdministration;
 using Acme.Api.Middleware;
-using Acme.Api.Tenancy;
 using Acme.DocumentManagement.Application;
 using Acme.DocumentManagement.Infrastructure;
 using Acme.Persistence;
@@ -15,7 +14,6 @@ using Acme.Persistence.Initialization;
 using Acme.Platform.Application;
 using Acme.Platform.Application.Services;
 using Acme.Platform.Infrastructure;
-using Acme.SharedKernel.Abstractions;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -44,10 +42,7 @@ builder.Services.ConfigureHttpJsonOptions(options =>
         new JsonStringEnumConverter());
 });
 
-// Tenant context is scoped: one per request, resolved from the authenticated
-// caller. Registered before the modules so every handler can depend on it.
 builder.Services.AddHttpContextAccessor();
-builder.Services.AddScoped<ITenantContext, ClaimsTenantContext>();
 
 builder.Services.AddAcmeAuthentication();
 
@@ -120,13 +115,20 @@ using (var scope = app.Services.CreateScope())
         await initializer.InitializeAsync();
     }
 
-    // Development only, and deliberately guarded here rather than inside the
-    // seeders: accounts with known passwords must never be created anywhere
-    // else, and that guarantee should be readable at the call site.
+    // The two ways a deployment gets its first account, and they are mutually
+    // exclusive on purpose. Development takes the known-password account;
+    // everywhere else the first administrator is invited and chooses their own
+    // (ADR-066 decision 5). Guarded here rather than inside either seeder so
+    // that "a known password exists only in Development" is readable at the
+    // call site.
     if (app.Environment.IsDevelopment())
     {
         await DevelopmentCredentialSeeder.SeedAsync(scope.ServiceProvider);
-        await PlatformAdministratorSeeder.SeedAsync(scope.ServiceProvider);
+    }
+    else
+    {
+        await AdministratorSeeder.SeedAsync(
+            scope.ServiceProvider, builder.Configuration);
     }
 }
 
@@ -154,9 +156,6 @@ authentication.MapCompletePasswordReset();
 authentication.MapChangePassword();
 authentication.MapSessions();
 authentication.MapGetCurrentUser();
-
-var platformAdministration = app.MapGroup("").WithTags("Platform Administration");
-platformAdministration.MapTenantAdministration();
 
 var users = app.MapGroup("").WithTags("Users");
 users.MapInviteUser();

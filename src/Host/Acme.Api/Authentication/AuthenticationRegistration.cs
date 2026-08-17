@@ -94,10 +94,10 @@ public static class AuthenticationRegistration
                 };
             });
 
-        // Authenticated by default. With tenancy now derived from a claim, an
-        // endpoint that forgets RequireAuthorization would not merely be open —
-        // it would reach ITenantContext with no identity behind it. Opting out
-        // is explicit and visible through AllowAnonymous.
+        // Authenticated by default: an endpoint that forgets
+        // RequireAuthorization is open, and opting out should be a thing
+        // somebody wrote down. Opting out is explicit and visible through
+        // AllowAnonymous.
         services.AddAuthorization(options =>
         {
             options.FallbackPolicy = new AuthorizationPolicyBuilder()
@@ -109,16 +109,10 @@ public static class AuthenticationRegistration
             // value is the enum member's name, written by JwtAccessTokenIssuer
             // and matched here — AcmeClaims exists so the two cannot drift.
             options.AddPolicy(
-                AcmePolicies.PlatformAdministrator,
+                AcmePolicies.Administrator,
                 policy => policy.RequireClaim(
                     AcmeClaims.Role,
-                    nameof(UserRole.PlatformAdministrator)));
-
-            options.AddPolicy(
-                AcmePolicies.TenantAdministrator,
-                policy => policy.RequireClaim(
-                    AcmeClaims.Role,
-                    nameof(UserRole.TenantAdministrator)));
+                    nameof(UserRole.Administrator)));
         });
 
         return services;

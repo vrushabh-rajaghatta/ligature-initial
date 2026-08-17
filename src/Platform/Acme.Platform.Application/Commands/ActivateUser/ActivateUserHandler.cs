@@ -1,6 +1,5 @@
 using Acme.Platform.Application.Common;
 using Acme.Platform.Domain.Aggregates.User;
-using Acme.SharedKernel.Abstractions;
 using Acme.SharedKernel.Exceptions;
 using Acme.Platform.Contracts;
 
@@ -23,14 +22,11 @@ namespace Acme.Platform.Application.Commands.ActivateUser;
 public sealed class ActivateUserHandler
 {
     private readonly IUserRepository _repository;
-    private readonly ITenantContext _tenantContext;
 
     public ActivateUserHandler(
-        IUserRepository repository,
-        ITenantContext tenantContext)
+        IUserRepository repository)
     {
         _repository = repository;
-        _tenantContext = tenantContext;
     }
 
     public async Task HandleAsync(
@@ -38,7 +34,7 @@ public sealed class ActivateUserHandler
         CancellationToken cancellationToken)
     {
         var user = await _repository.GetRequiredAsync(
-            command.UserId, _tenantContext.TenantId, cancellationToken);
+            command.UserId, cancellationToken);
 
         if (user.Status != UserStatus.Inactive)
         {

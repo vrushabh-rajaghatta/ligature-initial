@@ -2,7 +2,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 using Acme.DocumentManagement.Domain.Aggregates.Documents;
-using Acme.SharedKernel.Primitives;
 
 namespace Acme.Persistence.Configurations.DocumentManagement;
 
@@ -19,15 +18,6 @@ public sealed class DocumentConfiguration
             .HasConversion(
                 id => id.Value,
                 value => new DocumentId(value));
-
-        // The owning tenant (ADR-031). Held by value, no FK to Tenants.
-        builder.Property(x => x.TenantId)
-            .HasConversion(
-                id => id.Value,
-                value => new TenantId(value))
-            .IsRequired();
-
-        builder.HasIndex(x => x.TenantId);
 
         builder.Property(x => x.Name)
             .HasMaxLength(Document.NameMaxLength)
@@ -66,9 +56,12 @@ public sealed class DocumentConfiguration
 
         builder.HasIndex(x => x.Status);
 
-        // Within a tenant, document names are unique. The handler's explicit
+        // Document names are unique in this deployment. The handler's explicit
         // check produces the 409; this index is the last line of defence.
-        builder.HasIndex(x => new { x.TenantId, x.Name })
+        // Was (TenantId, Name) until ADR-066 — see that ADR's sequencing rule:
+        // narrowing this index is why the data must be split per customer
+        // before this code ships.
+        builder.HasIndex(x => x.Name)
             .IsUnique();
     }
 }

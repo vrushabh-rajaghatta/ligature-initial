@@ -7,11 +7,10 @@ namespace Acme.Api.Endpoints.Authentication;
 /// slowly.
 /// </summary>
 /// <remarks>
-/// TenantId is null for a platform user, whose token carries no tenant claim
-/// (ADR-030). Faithful to the token: absent there, null here.
+/// Carried a <c>TenantId</c> until ADR-066, mirroring the claim that used to
+/// travel in the token. Neither exists now.
 /// </remarks>
 public sealed record CurrentUserResponse(
     Guid UserId,
-    Guid? TenantId,
     string Email,
     string Role);

@@ -2,9 +2,6 @@ namespace Acme.DocumentManagement.Domain.Aggregates.Documents;
 
 public static class DocumentErrors
 {
-    public const string TenantRequired =
-        "A document must belong to a tenant.";
-
     public const string DocumentNameRequired =
         "Document Name is required.";
 
